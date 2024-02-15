@@ -2,6 +2,7 @@
 //C standard libraries
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 //Linux time libraries for usleep
 #include <unistd.h>
@@ -74,11 +75,9 @@ int main() {
 
 	draw_screen();
 
-	int dx = 1;
-	int dy = 0;
 	while(!snake_dies(&state))
 	{
-		tick_snake(&state, dx, dy);
+		tick_snake(&state);
 
 		timeout(0);
 		char c = getch();
@@ -88,20 +87,16 @@ int main() {
 		if(c != ERR) {
 			switch(c) {
 			case 'a':
-				dx = -1;
-				dy = 0;
+				set_snake_direction(&state, -1, 0);
 				break;
 			case 'd':
-				dx = 1;
-				dy = 0;
+				set_snake_direction(&state, 1, 0);
 				break;
 			case 'w':
-				dx = 0;
-				dy = 1;
+				set_snake_direction(&state, 0, 1);
 				break;
 			case 's':
-				dx = 0;
-				dy = -1;
+				set_snake_direction(&state, 0, -1);
 				break;
 			}
 		}

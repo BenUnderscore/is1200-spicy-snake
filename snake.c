@@ -89,6 +89,8 @@ void init_snake_game(struct game_state *state, int starting_x, int starting_y, i
     state->field_size_y = field_size_y;
     state->head = create_segment(starting_x, starting_y);
     state->growth_backlog = 0;
+	state->dx = 1;
+	state->dy = 0;
 
     state->occupied_squares = (char*) malloc(sizeof(char) * state->field_size_x * state->field_size_y);
     memset(state->occupied_squares, 0, state->field_size_x * state->field_size_y);
@@ -107,10 +109,29 @@ void grow_snake(struct game_state *state) {
     state->growth_backlog++;
 }
 
-void tick_snake(struct game_state* state, int dx, int dy) {
+int set_snake_direction(struct game_state *state, int dx, int dy) {
+	if(abs(dx) + abs(dy) > 1) {
+		abort();
+	}
+
+	if(dx != 0 && dx == -state->dx) {
+		return 0;
+	}
+
+	if(dy != 0 && dy == -state->dy) {
+		return 0;
+	}
+
+	state->dx = dx;
+	state->dy = dy;
+
+	return 1;
+}
+
+void tick_snake(struct game_state* state) {
     
-    if(state->head->x + dx < 0 ||
-        state->head->x + dx >= state->field_size_x || state->head->y + dy < 0 || state->head->y + dy >= state->field_size_y) {
+    if(state->head->x + state->dx < 0 ||
+        state->head->x + state->dx >= state->field_size_x || state->head->y + state->dy < 0 || state->head->y + state->dy >= state->field_size_y) {
         state->dead = 1;
     }
 
@@ -118,12 +139,12 @@ void tick_snake(struct game_state* state, int dx, int dy) {
         return;
     }
 
-    int eaten = state->head->x + dx == state->food_x && state->head->y + dy == state->food_y;
+    int eaten = state->head->x + state->dx == state->food_x && state->head->y + state->dy == state->food_y;
     if(eaten) {
         state->growth_backlog++;
     }
 
-    move_segment(state, state->head, dx, dy, state->growth_backlog > 0);
+    move_segment(state, state->head, state->dx, state->dy, state->growth_backlog > 0);
     if(state->growth_backlog > 0) {
         state->growth_backlog--;
     }

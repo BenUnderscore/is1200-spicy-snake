@@ -55,17 +55,27 @@ int main() {
 	rand();
 	rand();
 
-	struct game_state state;
+	struct player_state player;
+	player.head_x = SCREEN_WIDTH / 2;
+	player.head_y = SCREEN_HEIGHT / 2;
+	player.growth_backlog = 2;
+	player.dx = 1;
+	player.dy = 0;
+	player.dead = 0;
 
+	struct game_config config;
+	config.wrap_snakes = 0;
+	config.player_count = 0;
+	config.field_size_x = SCREEN_WIDTH;
+	config.field_size_y = SCREEN_HEIGHT;
+
+	struct game_state state;
 	init_snake_game(
 		&state,
-		SCREEN_WIDTH / 2,
-		SCREEN_HEIGHT / 2,
-		SCREEN_WIDTH,
-		SCREEN_HEIGHT
+		&player,
+		1,
+		&config
 	);
-
-	state.growth_backlog = 5;
 
 	for(int y = 0; y < SCREEN_HEIGHT; y++) {
 		for(int x = 0; x < SCREEN_WIDTH; x++) {
@@ -75,9 +85,9 @@ int main() {
 
 	draw_screen();
 
-	while(!snake_dies(&state))
+	while(!snake_dies(&state, 0))
 	{
-		tick_snake(&state);
+		tick_snake_game(&state);
 
 		timeout(0);
 		char c = getch();
@@ -87,16 +97,16 @@ int main() {
 		if(c != ERR) {
 			switch(c) {
 			case 'a':
-				set_snake_direction(&state, -1, 0);
+				set_snake_direction(&state, 0, -1, 0);
 				break;
 			case 'd':
-				set_snake_direction(&state, 1, 0);
+				set_snake_direction(&state, 0, 1, 0);
 				break;
 			case 'w':
-				set_snake_direction(&state, 0, 1);
+				set_snake_direction(&state, 0, 0, 1);
 				break;
 			case 's':
-				set_snake_direction(&state, 0, -1);
+				set_snake_direction(&state, 0, 0, -1);
 				break;
 			}
 		}
@@ -106,6 +116,7 @@ int main() {
 	}
 
 	deinit_screen();
+	deinit_snake_game(&state);
 
 	return 0;
 }

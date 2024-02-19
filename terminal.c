@@ -38,7 +38,7 @@ void deinit_screen() {
 void render_state(struct game_state* state) {
   for(int y = 0; y < SCREEN_HEIGHT; y++) {
     for(int x = 0; x < SCREEN_WIDTH; x++) {
-      screen[y][x] = state->occupied_squares[y * SCREEN_WIDTH + x] ?
+      screen[y][x] = state->occupied_squares[y * state->config->field_size_x + x] ?
         '#' : '.';
     }
   }

@@ -1,3 +1,4 @@
+#ifdef __unix__
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,7 +94,8 @@ void init_snake_game(struct game_state *state, struct player_state player_states
     state->occupied_square_count = 0;
 
 	state->snakes = (struct snake_segment**) malloc(sizeof(struct snake_segment*) * state->player_count);
-	for(int i = 0; i < state->player_count; i++) {
+    int i;
+	for(i = 0; i < state->player_count; i++) {
 		set_square_occupied(state, state->players[i].head_x, state->players[i].head_y, 1);
 		state->snakes[i] = create_segment(state->players[i].head_x, state->players[i].head_y);
 	}
@@ -101,7 +103,8 @@ void init_snake_game(struct game_state *state, struct player_state player_states
 }
 
 void deinit_snake_game(struct game_state* state) {
-	for(int i = 0; i < state->player_count; i++) {
+    int i;
+	for(i = 0; i < state->player_count; i++) {
 		if(state->snakes[i] != NULL) {
 			destroy_segment(state->snakes[i]);
 		}
@@ -132,7 +135,8 @@ int set_snake_direction(struct game_state *state, int player_num, int dx, int dy
 }
 
 void tick_snake_game(struct game_state* state) {
-	for(int player_num = 0; player_num < state->player_count; player_num++) {
+    int player_num;
+	for(player_num = 0; player_num < state->player_count; player_num++) {
 		struct player_state* player = &state->players[player_num];
 
 		int next_x = player->head_x + player->dx;
@@ -178,3 +182,4 @@ int snake_dies(const struct game_state* state, int player_num) {
 	struct player_state* player = &state->players[player_num];
     return player->dead;
 }
+#endif

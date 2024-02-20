@@ -17,19 +17,38 @@ int counter = 0;
 void user_isr() {
 }
 
+char screen_pages[4][4][32]; //pages, rows, columns
+
+void update_screen(){
+	int pagenum;
+	for(pagenum = 0; pagenum < 4; pagenum++){
+		display_image(32*pagenum,screen_pages[pagenum]);
+	}
+}
+
 void buttons_test() {
 	display_init();
-	uint8_t data[128];
-	{
-		int i;
-		for(i = 0; i < 128; i++) {
-			data[i] = i;
+	int counter = 0;
+	int rownum, pagenum, colnum;
+	for(pagenum = 0; pagenum < 4; pagenum++){
+		for(rownum = 0; rownum < 4; rownum++){
+			for(colnum = 0; colnum < 32; colnum++){
+				screen_pages[pagenum][rownum][colnum] = counter++;
+			}
 		}
 	}
-	display_image(0, data);
-	display_image(32, data);
-	display_image(64, data);
-	display_image(96, data);
+	update_screen();
+	// uint8_t data[128];
+	// {
+	// 	int i;
+	// 	for(i = 0; i < 128; i++) {
+	// 		data[i] = i;
+	// 	}
+	// }
+	// display_image(0, data);
+	// display_image(32, data);
+	// display_image(64, data);
+	// display_image(96, data);
 
 	int buttons_mask = (1 << 5) | (1 << 6) | (1 << 7);
 	
@@ -45,6 +64,8 @@ void buttons_test() {
 		int down = PORTD & (1 << 8);
 		int left = PORTD & (1 << 2);
 		write_leds(up | right | (down >> 7) | left);
+		screen_pages[0][0][0] = PORTD & (1<<5);
+		update_screen();
 
 		//artificial_delay(1000 * 1000);
 	}

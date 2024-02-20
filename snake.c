@@ -1,57 +1,72 @@
 #ifdef __unix__
 #include <stdlib.h>
-#include <string.h>
+#endif
 
 #include "snake.h"
 
-static void set_square_occupied(struct game_state* state, int x, int y, char occupied) {
-    char* prev_state = &(state->occupied_squares[y * state->config->field_size_x + x]);
-    if(!*prev_state && occupied) {
-        state->occupied_square_count++;
-        *prev_state = 1;
-    } else if(*prev_state && !occupied) {
-        state->occupied_square_count--;
-        *prev_state = 0;
-    }
+#ifndef __unix__
+static int abs(int n) {
+    return n < 0 ? -n : n;
+}
+#endif
+
+static uint16_t get_random(struct game_state* state, int max_plus_one) {
+    //Seed has range of 0-65535
+
+    int r = (int) state->random_seed;
+    r *= 253;
+    r += 41168;
+    state->random_seed = r % 65536;
+    return r % max_plus_one;
 }
 
-static struct snake_segment* create_segment(int x, int y) {
-    struct snake_segment* s = (struct snake_segment*) malloc(sizeof(struct snake_segment));
-    s->next = NULL;
-    s->x = x;
-    s->y = y;
+static void move_player(struct game_state* state, int playernum) {
+    struct player_state* player = &state->players[playernum];
 
-    return s;
-}
+    int new_x = player->head_x + player->dx;
+    int new_y = player->head_y + player->dy;
 
-static void destroy_segment(struct snake_segment* segment) {
-    if(segment->next) {
-        destroy_segment(segment->next);
+    char new_state = SNAKE_SEGMENT_NONE;
+    if(player->dx == 1) {
+        new_state = SNAKE_SEGMENT_RIGHT;
+    } else if(player->dx == -1) {
+        new_state = SNAKE_SEGMENT_LEFT;
+    } else if(player->dy == 1) {
+        new_state = SNAKE_SEGMENT_UP;
+    } else if(player->dy == -1) {
+        new_state = SNAKE_SEGMENT_DOWN;
     }
 
-    free(segment);
-}
+    state->segments[new_y * state->config->field_size_x + new_x] = SNAKE_SEGMENT_HEAD;
+    state->segments[player->head_y * state->config->field_size_x + player->head_x] = new_state;
+    state->segment_count++;
 
-static void move_segment(struct game_state* state, struct snake_segment* seg, int dx, int dy, int grow) {
-    int old_x = seg->x;
-    int old_y = seg->y;
-
-    seg->x += dx;
-    seg->y += dy;
-
-    set_square_occupied(state, seg->x, seg->y, 1);
-
-    if(seg->next) {
-        move_segment(state, seg->next, old_x - seg->next->x, old_y - seg->next->y, grow);
-    } else if(grow) {
-        seg->next = create_segment(old_x, old_y);
-    } else {
-        set_square_occupied(state, old_x, old_y, 0);
+    if(player->growth_backlog <= 0) {
+        char* old_segment = &state->segments[player->tail_y * state->config->field_size_x + player->tail_x];
+        switch(*old_segment) {
+        case SNAKE_SEGMENT_RIGHT:
+            player->tail_x++;
+            break;
+        case SNAKE_SEGMENT_LEFT:
+            player->tail_x--;
+            break;
+        case SNAKE_SEGMENT_UP:
+            player->tail_y++;
+            break;
+        case SNAKE_SEGMENT_DOWN:
+            player->tail_y--;
+            break;
+        }
+        *old_segment = SNAKE_SEGMENT_NONE;
+        state->segment_count--;
     }
+
+    player->head_x = new_x;
+    player->head_y = new_y;
 }
 
 static void regenerate_food(struct game_state* state) {
-    int location_count = state->config->field_size_x * state->config->field_size_y - state->occupied_square_count;
+    int location_count = state->config->field_size_x * state->config->field_size_y - state->segment_count;
 
     if(location_count <= 0) {
         state->food_x = -1;
@@ -59,11 +74,7 @@ static void regenerate_food(struct game_state* state) {
         return;
     }
 
-    int location = rand() % location_count;
-
-    if(location_count > RAND_MAX) {
-        abort();
-    }
+    int location = get_random(state, location_count);
 
     int x = 0;
     int y = 0;
@@ -75,7 +86,7 @@ static void regenerate_food(struct game_state* state) {
             y++;
         }
 
-        if(!state->occupied_squares[y * state->config->field_size_x + x]) {
+        if(state->segments[y * state->config->field_size_x + x] == SNAKE_SEGMENT_NONE) {
             i++;
         }
     }
@@ -84,38 +95,39 @@ static void regenerate_food(struct game_state* state) {
     state->food_y = y;
 }
 
-void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config) {
+void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config, uint16_t random_seed) {
+    if(config->field_size_x * config->field_size_y > GAME_MAX_SIZE) {
+        #ifdef __unix__
+        abort();
+        #endif
+    }
+
 	state->config = config;
 	state->players = player_states;
 	state->player_count = player_count;
+    state->random_seed = random_seed;
+    get_random(state, 1);
 
-    state->occupied_squares = (char*) malloc(sizeof(char) * state->config->field_size_x * state->config->field_size_y);
-    memset(state->occupied_squares, 0, state->config->field_size_x * state->config->field_size_y);
-    state->occupied_square_count = 0;
-
-	state->snakes = (struct snake_segment**) malloc(sizeof(struct snake_segment*) * state->player_count);
     int i;
-	for(i = 0; i < state->player_count; i++) {
-		set_square_occupied(state, state->players[i].head_x, state->players[i].head_y, 1);
-		state->snakes[i] = create_segment(state->players[i].head_x, state->players[i].head_y);
-	}
+    for(i = 0; i < (state->config->field_size_x * state->config->field_size_y); i++) {
+        state->segments[i] = SNAKE_SEGMENT_NONE;
+    }
+    for(i = 0; i < player_count; i++) {
+        state->segments[player_states[i].head_y * state->config->field_size_x + player_states[i].head_x] = SNAKE_SEGMENT_HEAD;
+    }
+    state->segment_count = player_count;
+
     regenerate_food(state);
 }
 
 void deinit_snake_game(struct game_state* state) {
-    int i;
-	for(i = 0; i < state->player_count; i++) {
-		if(state->snakes[i] != NULL) {
-			destroy_segment(state->snakes[i]);
-		}
-	}
-	free(state->snakes);
-    free(state->occupied_squares);
 }
 
 int set_snake_direction(struct game_state *state, int player_num, int dx, int dy) {
 	if(abs(dx) + abs(dy) > 1) {
+        #ifdef __unix__
 		abort();
+        #endif
 	}
 
 	struct player_state* player = &state->players[player_num];
@@ -135,6 +147,7 @@ int set_snake_direction(struct game_state *state, int player_num, int dx, int dy
 }
 
 void tick_snake_game(struct game_state* state) {
+    get_random(state, 2);
     int player_num;
 	for(player_num = 0; player_num < state->player_count; player_num++) {
 		struct player_state* player = &state->players[player_num];
@@ -151,7 +164,7 @@ void tick_snake_game(struct game_state* state) {
 			player->dead = 1;
 		}
 
-		if(!player->dead && state->occupied_squares[next_y * state->config->field_size_x + next_x]) {
+		if(!player->dead && state->segments[next_y * state->config->field_size_x + next_x] != SNAKE_SEGMENT_NONE) {
 			player->dead = 1;
 		}
 
@@ -161,9 +174,7 @@ void tick_snake_game(struct game_state* state) {
 				eaten = 1;
 			}
 
-			move_segment(state, state->snakes[player_num], player->dx, player->dy, player->growth_backlog > 0);
-			state->players[player_num].head_x = state->snakes[player_num]->x;
-			state->players[player_num].head_y = state->snakes[player_num]->y;
+			move_player(state, player_num);
 
 			if(player->growth_backlog > 0) {
 				player->growth_backlog--;
@@ -182,4 +193,3 @@ int snake_dies(const struct game_state* state, int player_num) {
 	struct player_state* player = &state->players[player_num];
     return player->dead;
 }
-#endif

@@ -38,13 +38,15 @@ void deinit_screen() {
 void render_state(struct game_state* state) {
   for(int y = 0; y < SCREEN_HEIGHT; y++) {
     for(int x = 0; x < SCREEN_WIDTH; x++) {
-      screen[y][x] = state->occupied_squares[y * state->config->field_size_x + x] ?
-        '#' : '.';
+      screen[y][x] = state->segments[y * state->config->field_size_x + x] == SNAKE_SEGMENT_NONE ?
+        '.' : '#';
     }
   }
 
   screen[state->food_y][state->food_x] = '+';
 }
+
+struct game_state state;
 
 int main() {
 	init_screen();
@@ -58,6 +60,8 @@ int main() {
 	struct player_state player;
 	player.head_x = SCREEN_WIDTH / 2;
 	player.head_y = SCREEN_HEIGHT / 2;
+	player.tail_x = player.head_x;
+	player.tail_y = player.head_y;
 	player.growth_backlog = 2;
 	player.dx = 1;
 	player.dy = 0;
@@ -65,16 +69,15 @@ int main() {
 
 	struct game_config config;
 	config.wrap_snakes = 0;
-	config.player_count = 0;
 	config.field_size_x = SCREEN_WIDTH;
 	config.field_size_y = SCREEN_HEIGHT;
 
-	struct game_state state;
 	init_snake_game(
 		&state,
 		&player,
 		1,
-		&config
+		&config,
+		18386
 	);
 
 	for(int y = 0; y < SCREEN_HEIGHT; y++) {

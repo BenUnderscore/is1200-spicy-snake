@@ -1,16 +1,22 @@
 #pragma once
 
-#define MAX_PLAYERS (2)
+#include <stdint.h>
 
-struct snake_segment {
-    int x;
-    int y;
-    struct snake_segment *next;
-};
+#define MAX_PLAYERS (2)
+#define GAME_MAX_SIZE (4096)
+
+#define SNAKE_SEGMENT_NONE (0)
+#define SNAKE_SEGMENT_UP (1)
+#define SNAKE_SEGMENT_RIGHT (2)
+#define SNAKE_SEGMENT_DOWN (3)
+#define SNAKE_SEGMENT_LEFT (4)
+#define SNAKE_SEGMENT_HEAD (5)
 
 struct player_state {
 	int head_x;
 	int head_y;
+	int tail_x;
+	int tail_y;
 	int growth_backlog;
 
 	int dx;
@@ -29,17 +35,17 @@ struct game_config {
 struct game_state {
 	const struct game_config* config;
 	struct player_state* players;
-	struct snake_segment** snakes;
 	int player_count;
 
+	uint16_t random_seed;
     int food_x;
     int food_y;
 
-    char* occupied_squares;
-    int occupied_square_count;
+	char segments[GAME_MAX_SIZE];
+    int segment_count;
 };
 
-void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config);
+void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config, uint16_t random_seed);
 void deinit_snake_game(struct game_state* state);
 int set_snake_direction(struct game_state *state, int player_num, int dx, int dy);
 int snake_dies(const struct game_state* state, int player_num);

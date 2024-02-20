@@ -31,25 +31,31 @@ void update_screen(){
 	}
 }
 
+void render_pixel(int x, int y, char pixels) {
+	int screen_x = x*2;
+	int screen_y = y*2;
+	int pagenum = screen_x >> 5; //divided by 32, round down for page
+	int rownum = screen_y >> 3; 
+	int colnum = screen_x & 0b11111;
+	int bitnum = screen_y & 0b111;
+	char *c1 = &screen_pages[pagenum][rownum][colnum];
+	char *c2 = &screen_pages[pagenum][rownum][colnum+1];
+	char mask = 0b11 << bitnum;
+	*c1 = (*c1 & ~mask) | (mask & (pixels << bitnum));
+	*c2 = (*c2 & ~mask) | (mask & (pixels >> 2 << bitnum));
+}
+
 void render_snake(struct game_state *state){
 	int x,y,screen_x,screen_y;
 	int pagenum, rownum, colnum, bitnum;
 	for(y = 0; y < state->config->field_size_y; y++){
 		for(x = 0; x < state->config->field_size_x; x++){
-			screen_x = x*2;
-			screen_y = y*2;
 			char segment = state->segments[y*state->config->field_size_x+x];
-			pagenum = screen_x >> 5; //divided by 32, round down for page
-			rownum = screen_y >> 3; 
-			colnum = screen_x & 0b11111;
-			bitnum = screen_y & 0b111;
-			char *c1 = &screen_pages[pagenum][rownum][colnum];
-			char *c2 = &screen_pages[pagenum][rownum][colnum+1];
-			char mask = 0b11 << bitnum;
-			*c1 = (*c1 & ~mask) | (mask * (segment != SNAKE_SEGMENT_NONE));
-			*c2 = (*c2 & ~mask) | (mask * (segment != SNAKE_SEGMENT_NONE));
+			render_pixel(x, y, segment == SNAKE_SEGMENT_NONE ? 0 : 0xF);
 		}
 	}
+
+	render_pixel(state->food_x, state->food_y, 0b1001);
 }
 
 void init_timer2(){
@@ -78,18 +84,39 @@ void snake_main(){
 	player.dx = 1;
 	player.dy = 0;
 	player.dead = 0;
+	//Init
+	//buttons of breadboard
+	TRISD = 0b1111;
 
 	struct game_config config;
 	config.field_size_x = 64;
 	config.field_size_y = 16;
 
-	init_snake_game(&snake_state, &player, 1, &config, 127);
+	init_snake_game(&snake_state, &player, 1, &config, 18386);
 	display_init();
 	init_timer2();
 	initleds();
 	int counter = 0;
+	int dx = 1;
+	int dy = 0;
 	while(1){
+		char dbg  = PORTD & 0xF;
+		write_leds(dbg);
+		if((PORTD >> 0 ) & 1){
+			dx = 1;
+			dy = 0;
+		} else if((PORTD >> 1) & 1){
+			dx = 0;
+			dy = 1;
+		} else if((PORTD >> 2) & 1){
+			dx = -1;
+			dy = 0;
+		} else if((PORTD >> 3) & 1){
+			dx = 0;
+			dy = -1;
+		}
 		if(check_timer2()){
+			set_snake_direction(&snake_state,0,dx,dy);
 			tick_snake_game(&snake_state);
 			if(player.dead){
 				return;

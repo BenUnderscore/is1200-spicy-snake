@@ -1,9 +1,14 @@
 #include "/opt/mcb32tools/include/pic32mx.h"
 #include "screen.h"
 #include <stdint.h>
+#include "snake.h"
 
 void write_leds(char value) {
 	PORTE = value;
+}
+
+void initleds(){
+	TRISECLR = 0xFF;
 }
 
 void artificial_delay(int count) {
@@ -23,6 +28,75 @@ void update_screen(){
 	int pagenum;
 	for(pagenum = 0; pagenum < 4; pagenum++){
 		display_image(32*pagenum,screen_pages[pagenum]);
+	}
+}
+
+void render_snake(struct game_state *state){
+	int x,y,screen_x,screen_y;
+	int pagenum, rownum, colnum, bitnum;
+	for(y = 0; y < state->config->field_size_y; y++){
+		for(x = 0; x < state->config->field_size_x; x++){
+			screen_x = x*2;
+			screen_y = y*2;
+			char segment = state->segments[y*state->config->field_size_x+x];
+			pagenum = screen_x >> 5; //divided by 32, round down for page
+			rownum = screen_y >> 3; 
+			colnum = screen_x & 0b11111;
+			bitnum = screen_y & 0b111;
+			char *c1 = &screen_pages[pagenum][rownum][colnum];
+			char *c2 = &screen_pages[pagenum][rownum][colnum+1];
+			char mask = 0b11 << bitnum;
+			*c1 = (*c1 & ~mask) | (mask * (segment != SNAKE_SEGMENT_NONE));
+			*c2 = (*c2 & ~mask) | (mask * (segment != SNAKE_SEGMENT_NONE));
+		}
+	}
+}
+
+void init_timer2(){
+	// initialiserar timer 2 för 1/10s uppdatering
+	T2CON = 0 | 1 << 15 | 0b111 << 4;
+	PR2 = 31250;
+}
+
+int check_timer2(){
+	if(IFS(0) >> 8 & 1){
+		IFSCLR(0) = 1 << 8;
+		return 1;
+	}
+	return 0;
+}
+
+struct game_state snake_state;
+
+void snake_main(){
+	struct player_state player;
+	player.head_x = 8;
+	player.head_y = 8;
+	player.tail_x = player.head_x;
+	player.tail_y = player.head_y;
+	player.growth_backlog = 2;
+	player.dx = 1;
+	player.dy = 0;
+	player.dead = 0;
+
+	struct game_config config;
+	config.field_size_x = 64;
+	config.field_size_y = 16;
+
+	init_snake_game(&snake_state, &player, 1, &config, 127);
+	display_init();
+	init_timer2();
+	initleds();
+	int counter = 0;
+	while(1){
+		if(check_timer2()){
+			tick_snake_game(&snake_state);
+			if(player.dead){
+				return;
+			}
+			render_snake(&snake_state);
+			update_screen();
+		}
 	}
 }
 
@@ -115,7 +189,7 @@ int main() {
 	/* SPI2CON bit ON = 1; */
 	SPI2CONSET = 0x8000;
 
-	buttons_test();
+	snake_main();
 	
 	return 0;
 }

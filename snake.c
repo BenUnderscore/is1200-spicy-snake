@@ -146,29 +146,44 @@ int set_snake_direction(struct game_state *state, int player_num, int dx, int dy
 	return 1;
 }
 
-void move_npc(struct game_state *state, struct player *npc){
-    int diffx, diffy;
-    diffx = state->food_x - npc->head_x;
-    diffy = state->food_y - npc->head_y;
-    if(abs(diffx)<(diffy)){
-        if(diffx < 0){
-            npc->dx = -1;
-            npc->dy = 0;
-        }
-        else{
-            npc->dx = 1;
-            npc->dy = 0;
-        }
+void move_npc(struct game_state *state, struct player *npc, struct game_pf *pf){
+    int dx_cw,dy_cw;
+    int dx_ccw, dy_ccw;
+    if(npc->dx < 0){
+        dx_ccw = 0;
+        dx_cw = 0;
+        dy_ccw = -1;
+        dy_cw = 1;
+    }
+    else if(npc->dx > 0){
+        dx_ccw = 0;
+        dx_cw = 0;
+        dy_ccw = 1;
+        dy_cw = -1;
+    }
+    else if(npc->dy < 0){
+        dx_ccw = 1;
+        dx_cw = -1;
+        dy_ccw = 0;
+        dy_cw =0;
     }
     else{
-        if(diffy < 0){
-            npc->dx = 0;
-            npc->dy = -1;
-        }
-        else{
-            npc->dx = 0;
-            npc->dy = 1;
-        }
+        dx_ccw = -1;
+        dx_cw = 1;
+        dy_ccw = 0;
+        dy_cw = 0;
+    }
+    int forward = pf->distances[(npc->head_y + npc->dy) * state->config->field_size_x + (npc->head_x + npc->dx)];
+    int cw = pf->distances[(npc->head_y + dy_cw) * state->config->field_size_x + (npc->head_x + dx_cw)];
+    int ccw = pf->distances[(npc->head_y + dy_ccw) * state->config->field_size_x + (npc->head_x + dx_ccw)];
+
+    if(cw != -1 && (ccw == -1 || cw < ccw) && (forward == -1 || cw < forward)){
+        npc->dx = dx_cw;
+        npc->dy = dy_cw;
+    }
+    else if(ccw != -1 && (cw == -1 || ccw < cw) && (forward == -1 || ccw < forward)){
+        npc->dx = dx_ccw;
+        npc->dy = dy_ccw;
     }
 }
 

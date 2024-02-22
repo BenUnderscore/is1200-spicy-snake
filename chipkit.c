@@ -313,7 +313,7 @@ int check_timer2(){
 }
 
 struct game_state snake_state;
-
+struct game_pf snake_pf;
 
 #define MODE_SINGLE 0
 #define MODE_AI 1
@@ -335,7 +335,7 @@ int mode_select() {
 
 			struct inputs p1mode = get_p1_inputs();
 			if(p1mode.down){
-				return;
+				return current_mode;
 			}else if(p1mode.left){
 				current_mode = 0;
 			}else if(p1mode.up){
@@ -367,6 +367,8 @@ int mode_select() {
 }
 
 void run_game(int mode) {
+	int player_count = mode == MODE_SINGLE ? 1 : 2;
+	
 	struct player_state players[2];
 	players[0].head_x = 8;
 	players[0].head_y = 8;
@@ -395,12 +397,11 @@ void run_game(int mode) {
 	int dy0 = 0;
 	int dx1 = -1;
 	int dy1 = 0;
-	init_snake_game(&snake_state, players, 2, &config, 18386);
+	init_snake_game(&snake_state, players, player_count, &config, 18386);
 	while(1){
 		char dbg  = PORTD & 0xF;
 		write_leds(dbg);
 		struct inputs p1i = get_p1_inputs();
-		struct inputs p2i = get_p2_inputs();
 		//pin 3, right
 		if(p1i.right){
 			dx0 = 1;
@@ -418,32 +419,42 @@ void run_game(int mode) {
 			dx0 = 0;
 			dy0 = -1;
 		}
-		//replacement for buttons on board to breadboard
-		if(p2i.right){
-			dx1 = 1;
-			dy1 = 0;
-		} else if(p2i.left){
-			dx1 = -1;
-			dy1 = 0;
-		} else if(p2i.up){
-			dx1 = 0;
-			dy1 = 1;
-		} else if(p2i.down){
-			dx1 = 0;
-			dy1 = -1;
+
+		if(mode == MODE_MULTI) {
+			struct inputs p2i = get_p2_inputs();
+			//replacement for buttons on board to breadboard
+			if(p2i.right){
+				dx1 = 1;
+				dy1 = 0;
+			} else if(p2i.left){
+				dx1 = -1;
+				dy1 = 0;
+			} else if(p2i.up){
+				dx1 = 0;
+				dy1 = 1;
+			} else if(p2i.down){
+				dx1 = 0;
+				dy1 = -1;
+			}	
 		}
+
 		if(check_timer2()){
 			if((frame_counter & 1) == 0) {
 				set_snake_direction(&snake_state, 0, dx0, dy0);
-				set_snake_direction(&snake_state, 1, dx1, dy1);
+				if(mode == MODE_MULTI) {
+					set_snake_direction(&snake_state, 1, dx1, dy1);
+				} else if(mode == MODE_AI) {
+					game_pf_calc(&snake_state, &snake_pf);
+					move_npc(&snake_state, &players[1], &snake_pf);
+				}
 				tick_snake_game(&snake_state);
-				if(players[0].dead && players[1].dead){
+				if(players[0].dead && (mode == MODE_SINGLE || players[1].dead)){
 					return;
 				}
 				render_snake(&snake_state);
 				update_screen();
 			} else {
-				render_animation(&snake_state, players, 2);
+				render_animation(&snake_state, players, player_count);
 				update_screen();
 			}
 
@@ -458,7 +469,10 @@ void snake_main(){
 	initleds();
 	init_inputs();
 
-	mode_select();
+	while(1) {
+		int mode = mode_select();
+		run_game(mode);
+	}
 }
 
 //0x00 0x84 0x86 0xFF 0xFF 0x80 0x80 0x00 0x00 0xFF 0xFF 0x11 0x11 0x0E 0x0E

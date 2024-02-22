@@ -109,52 +109,82 @@ int check_timer2(){
 struct game_state snake_state;
 
 void snake_main(){
-	struct player_state player;
-	player.head_x = 8;
-	player.head_y = 8;
-	player.tail_x = player.head_x;
-	player.tail_y = player.head_y;
-	player.growth_backlog = 2;
-	player.dx = 1;
-	player.dy = 0;
-	player.dead = 0;
+	struct player_state players[2];
+	players[0].head_x = 8;
+	players[0].head_y = 8;
+	players[1].head_x = 40;
+	players[1].head_y = 8;
+	players[0].tail_x = players[0].head_x;
+	players[0].tail_y = players[0].head_y;
+	players[1].tail_x = players[1].head_x;
+	players[1].tail_y = players[1].head_y;
+	players[0].growth_backlog = 2;
+	players[1].growth_backlog = 2;
+	players[0].dx = 1;
+	players[0].dy = 0;
+	players[0].dead = 0;
+	players[1].dx = -1;
+	players[1].dy = 0;
+	players[1].dead = 0;
 	//Init
 	//buttons of breadboard
-	TRISD = 0b1111;
+	TRISD = 0b11101111;
+	TRISF = 0b10;
 
 	struct game_config config;
 	config.field_size_x = 64;
 	config.field_size_y = 16;
 
-	init_snake_game(&snake_state, &player, 1, &config, 18386);
+	init_snake_game(&snake_state, &players, 2, &config, 18386);
 	display_init();
 	init_timer2();
 	initleds();
 	int counter = 0;
 	int frame_counter = 0;
-	int dx = 1;
-	int dy = 0;
+	int dx0 = 1;
+	int dy0 = 0;
+	int dx1 = -1;
+	int dy1 = 0;
 	while(1){
 		char dbg  = PORTD & 0xF;
 		write_leds(dbg);
+		//pin 3, right
 		if((PORTD >> 0 ) & 1){
-			dx = 1;
-			dy = 0;
+			dx0 = 1;
+			dy0 = 0;
+		//pin 5, up
 		} else if((PORTD >> 1) & 1){
-			dx = 0;
-			dy = 1;
+			dx0 = 0;
+			dy0 = 1;
+		//pin 6, left
 		} else if((PORTD >> 2) & 1){
-			dx = -1;
-			dy = 0;
+			dx0 = -1;
+			dy0 = 0;
+		//pin 9, down
 		} else if((PORTD >> 3) & 1){
-			dx = 0;
-			dy = -1;
+			dx0 = 0;
+			dy0 = -1;
 		}
-		if(check_timer2()) {
+		//replacement for buttons on board to breadboard
+		if((PORTD >> 7) & 1){
+			dx1 = 1;
+			dy1 = 0;
+		} else if((PORTD >> 6) & 1){
+			dx1 = -1;
+			dy1 = 0;
+		} else if((PORTD >> 5) & 1){
+			dx1 = 0;
+			dy1 = 1;
+		} else if((PORTF >> 1) & 1){
+			dx1 = 0;
+			dy1 = -1;
+		}
+		if(check_timer2()){
 			if((frame_counter & 1) == 0) {
-				set_snake_direction(&snake_state,0,dx,dy);
+				set_snake_direction(&snake_state, 0, dx0, dy0);
+				set_snake_direction(&snake_state, 1, dx1, dy1);
 				tick_snake_game(&snake_state);
-				if(player.dead) {
+				if(players[0].dead && players[1].dead){
 					return;
 				}
 				render_snake(&snake_state);
@@ -163,6 +193,51 @@ void snake_main(){
 
 			frame_counter++;
 		}
+	}
+}
+
+void buttons_test() {
+	display_init();
+	int counter = 0;
+	int rownum, pagenum, colnum;
+	for(pagenum = 0; pagenum < 4; pagenum++){
+		for(rownum = 0; rownum < 4; rownum++){
+			for(colnum = 0; colnum < 32; colnum++){
+				screen_pages[pagenum][rownum][colnum] = counter++;
+			}
+		}
+	}
+	update_screen();
+	// uint8_t data[128];
+	// {
+	// 	int i;
+	// 	for(i = 0; i < 128; i++) {
+	// 		data[i] = i;
+	// 	}
+	// }
+	// display_image(0, data);
+	// display_image(32, data);
+	// display_image(64, data);
+	// display_image(96, data);
+
+	int buttons_mask = (1 << 5) | (1 << 6) | (1 << 7);
+	
+	//Init
+	TRISD = buttons_mask;
+	TRISE = 0x00;
+	TRISF = (1 << 3) | (1 << 2);
+	TRISD |= (1 << 0) | (1 << 8) | (1 << 2);
+
+	while(1) {
+		int up = PORTF & (1 << 3);
+		int right = PORTD & (1 << 0);
+		int down = PORTD & (1 << 8);
+		int left = PORTD & (1 << 2);
+		write_leds(up | right | (down >> 7) | left);
+		screen_pages[0][0][0] = PORTD & (1<<5);
+		update_screen();
+
+		//artificial_delay(1000 * 1000);
 	}
 }
 

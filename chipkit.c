@@ -85,7 +85,8 @@ static char pixels_from_direction(int dx, int dy) {
 }
 
 void render_animation(struct player_state* player_states, int player_count) {
-	for(int player_num = 0; player_num < player_count; player_num++) {
+	int player_num;
+	for(player_num = 0; player_num < player_count; player_num++) {
 		int x = player_states[player_num].head_x + player_states[player_num].dx;
 		int y = player_states[player_num].head_y + player_states[player_num].dy;
 		render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
@@ -135,7 +136,7 @@ void snake_main(){
 	config.field_size_x = 64;
 	config.field_size_y = 16;
 
-	init_snake_game(&snake_state, &players, 2, &config, 18386);
+	init_snake_game(&snake_state, players, 2, &config, 18386);
 	display_init();
 	init_timer2();
 	initleds();

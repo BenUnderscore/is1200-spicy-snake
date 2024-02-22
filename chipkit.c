@@ -74,22 +74,29 @@ void render_snake(struct game_state *state){
 
 static char pixels_from_direction(int dx, int dy) {
 	if(dx > 0) {
-		return 0b1100;
-	} else if(dx < 0) {
 		return 0b0011;
+	} else if(dx < 0) {
+		return 0b1100;
 	} else if(dy > 0) {
-		return 0b1010;
-	} else {
 		return 0b0101;
+	} else {
+		return 0b1010;
 	}
 }
 
-void render_animation(struct player_state* player_states, int player_count) {
+void render_animation(struct game_state* state, struct player_state* player_states, int player_count) {
 	int player_num;
 	for(player_num = 0; player_num < player_count; player_num++) {
-		int x = player_states[player_num].head_x + player_states[player_num].dx;
-		int y = player_states[player_num].head_y + player_states[player_num].dy;
-		render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
+		if(!player_states[player_num].dead) {
+			int x = player_states[player_num].head_x + player_states[player_num].dx;
+			int y = player_states[player_num].head_y + player_states[player_num].dy;
+			if(x >= 0 && x < state->config->field_size_x && y >= 0 && y < state->config->field_size_y){
+			render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
+			}
+			int tail_dx, tail_dy;
+			get_tail_dir(state, player_num, &tail_dx, &tail_dy);
+			render_pixel(player_states[player_num].tail_x, player_states[player_num].tail_y, pixels_from_direction(-tail_dx, -tail_dy));
+		}
 	}
 }
 
@@ -189,6 +196,9 @@ void snake_main(){
 					return;
 				}
 				render_snake(&snake_state);
+				update_screen();
+			} else {
+				render_animation(&snake_state, players, 2);
 				update_screen();
 			}
 

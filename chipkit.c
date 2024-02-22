@@ -22,6 +22,60 @@ int counter = 0;
 void user_isr() {
 }
 
+struct inputs{
+	char up;
+	char right;
+	char left;
+	char down;
+};
+
+void init_inputs() {
+	TRISD = 0b11101111;
+	TRISF = 0b10;
+}
+
+struct inputs get_p1_inputs(){
+	struct inputs i;
+	i.up = 0;
+	i.right = 0;
+	i.left = 0;
+	i.down = 0;
+	if((PORTD >> 0 ) & 1){
+		i.right = 1;
+	//pin 5, up
+	} else if((PORTD >> 1) & 1){
+		i.up = 1;
+	//pin 6, left
+	} else if((PORTD >> 2) & 1){
+		i.left = 1;
+	//pin 9, down
+	} else if((PORTD >> 3) & 1){
+		i.down = 1;
+	}
+	return i;
+}
+
+struct inputs get_p2_inputs(){
+	struct inputs i;
+	i.up = 0;
+	i.right = 0;
+	i.left = 0;
+	i.down = 0;
+	if((PORTD >> 7) & 1){
+		i.right = 1;
+	//pin 5, up
+	} else if((PORTD >> 6) & 1){
+		i.up = 1;
+	//pin 6, left
+	} else if((PORTD >> 5) & 1){
+		i.left = 1;
+	//pin 9, down
+	} else if((PORTF >> 1) & 1){
+		i.down = 1;
+	}
+	return i;
+}
+
 char screen_pages[4][4][32]; //pages, rows, columns
 
 void update_screen(){
@@ -91,7 +145,7 @@ void render_animation(struct game_state* state, struct player_state* player_stat
 			int x = player_states[player_num].head_x + player_states[player_num].dx;
 			int y = player_states[player_num].head_y + player_states[player_num].dy;
 			if(x >= 0 && x < state->config->field_size_x && y >= 0 && y < state->config->field_size_y){
-			render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
+				render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
 			}
 			int tail_dx, tail_dy;
 			get_tail_dir(state, player_num, &tail_dx, &tail_dy);
@@ -134,10 +188,6 @@ void snake_main(){
 	players[1].dx = -1;
 	players[1].dy = 0;
 	players[1].dead = 0;
-	//Init
-	//buttons of breadboard
-	TRISD = 0b11101111;
-	TRISF = 0b10;
 
 	struct game_config config;
 	config.field_size_x = 64;
@@ -147,6 +197,7 @@ void snake_main(){
 	display_init();
 	init_timer2();
 	initleds();
+	init_inputs();
 	int counter = 0;
 	int frame_counter = 0;
 	int dx0 = 1;
@@ -156,34 +207,36 @@ void snake_main(){
 	while(1){
 		char dbg  = PORTD & 0xF;
 		write_leds(dbg);
+		struct inputs p1i = get_p1_inputs();
+		struct inputs p2i = get_p2_inputs();
 		//pin 3, right
-		if((PORTD >> 0 ) & 1){
+		if(p1i.right){
 			dx0 = 1;
 			dy0 = 0;
 		//pin 5, up
-		} else if((PORTD >> 1) & 1){
+		} else if(p1i.up){
 			dx0 = 0;
 			dy0 = 1;
 		//pin 6, left
-		} else if((PORTD >> 2) & 1){
+		} else if(p1i.left){
 			dx0 = -1;
 			dy0 = 0;
 		//pin 9, down
-		} else if((PORTD >> 3) & 1){
+		} else if(p1i.down){
 			dx0 = 0;
 			dy0 = -1;
 		}
 		//replacement for buttons on board to breadboard
-		if((PORTD >> 7) & 1){
+		if(p2i.right){
 			dx1 = 1;
 			dy1 = 0;
-		} else if((PORTD >> 6) & 1){
+		} else if(p2i.left){
 			dx1 = -1;
 			dy1 = 0;
-		} else if((PORTD >> 5) & 1){
+		} else if(p2i.up){
 			dx1 = 0;
 			dy1 = 1;
-		} else if((PORTF >> 1) & 1){
+		} else if(p2i.down){
 			dx1 = 0;
 			dy1 = -1;
 		}

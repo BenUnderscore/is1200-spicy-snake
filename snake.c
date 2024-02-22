@@ -146,6 +146,32 @@ int set_snake_direction(struct game_state *state, int player_num, int dx, int dy
 	return 1;
 }
 
+void move_npc(struct game_state *state, struct player *npc){
+    int diffx, diffy;
+    diffx = state->food_x - npc->head_x;
+    diffy = state->food_y - npc->head_y;
+    if(abs(diffx)<(diffy)){
+        if(diffx < 0){
+            npc->dx = -1;
+            npc->dy = 0;
+        }
+        else{
+            npc->dx = 1;
+            npc->dy = 0;
+        }
+    }
+    else{
+        if(diffy < 0){
+            npc->dx = 0;
+            npc->dy = -1;
+        }
+        else{
+            npc->dx = 0;
+            npc->dy = 1;
+        }
+    }
+}
+
 void tick_snake_game(struct game_state* state) {
     get_random(state, 2);
     int player_num;
@@ -192,4 +218,75 @@ void tick_snake_game(struct game_state* state) {
 int snake_dies(const struct game_state* state, int player_num) {
 	struct player_state* player = &state->players[player_num];
     return player->dead;
+}
+
+void game_pf_calc(struct game_state *state, struct game_pf *pf){
+    int x, y;
+    int sizex = state->config->field_size_x;
+    int sizey = state->config->field_size_y;
+    int stack_length = 0;
+    int back_stack_length = 0;
+    struct game_pf_point* stack = pf->stack1;
+    struct game_pf_point* back_stack = pf->stack2;
+    for(y = 0; y<sizey; y++){
+        for(x=0; x<sizex; x++){
+            pf->distances[y*sizex + x] = -1;
+        }
+    }
+    pf->distances[state->food_y*sizex + state->food_x] = 0;
+    stack[stack_length++] = struct game_pf_point { state->food_x, state->food_y };
+
+    while(stack_length > 0) {
+        for(i = 0; i < stack_length; i++) {
+            int x = stack[i].x;
+            int y = stack[i].y;
+            
+            int value = pf->distances[y * sizex + x];
+
+            //Left cell
+            if(x - 1 >= 0 &&
+                state->segments[y * sizex + (x - 1)] == SNAKE_SEGMENT_NONE &&
+                pf->distances[y * sizex + (x - 1)] == -1)
+            {
+                pf->distances[y * sizex + (x - 1)] = value + 1;
+                back_stack[back_stack_length++] = struct game_pf_point { x - 1, y };
+            }
+
+            //Right cell
+            if(x + 1 < sizex &&
+                state->segments[y * sizex + (x + 1)] == SNAKE_SEGMENT_NONE &&
+                pf->distances[y * sizex + (x + 1)] == -1)
+            {
+                pf->distances[y * sizex + (x + 1)] = value + 1;
+                back_stack[back_stack_length++] = struct game_pf_point { x + 1, y };
+            }
+
+            //Top cell
+            if(y - 1 >= 0 &&
+                state->segments[y * sizex + (x + 1)] == SNAKE_SEGMENT_NONE &&
+                pf->distances[y * sizex + (y - 1)] == -1)
+            {
+                pf->distances[y * sizex + (y - 1)] = value + 1;
+                back_stack[back_stack_length++] = struct game_pf_point { x, y - 1 };
+            }
+
+            //Bottom cell
+            if(y + 1 < sizey &&
+                state->segments[y * sizex + (x + 1)] == SNAKE_SEGMENT_NONE &&
+                pf->distances[y * sizex + (y + 1)] == -1)
+            {
+                pf->distances[y * sizex + (y + 1)] = value + 1;
+                back_stack[back_stack_length++] = struct game_pf_point { x, y + 1 };
+            }
+        }
+
+        int temp = stack_length;
+        void* temp2 = stack;
+
+        stack_length = back_stack_length;
+        stack = back_stack;
+
+        back_stack_length = temp;
+        back_stack = temp2;
+    }
 }

@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #define MAX_PLAYERS (2)
-#define GAME_MAX_SIZE (4096)
+#define GAME_MAX_SIZE (1024)
 
 #define SNAKE_SEGMENT_NONE (0)
 #define SNAKE_SEGMENT_UP (1)
@@ -23,6 +23,17 @@ struct player_state {
 	int dy;
 
 	int dead;
+};
+
+struct game_pf_point {
+	char x;
+	char y;
+};
+
+struct game_pf{
+	short distances[GAME_MAX_SIZE];
+	struct game_pf_point stack1[GAME_MAX_SIZE];
+	struct game_pf_point stack2[GAME_MAX_SIZE];
 };
 
 struct game_config {
@@ -50,3 +61,4 @@ void deinit_snake_game(struct game_state* state);
 int set_snake_direction(struct game_state *state, int player_num, int dx, int dy);
 int snake_dies(const struct game_state* state, int player_num);
 void tick_snake_game(struct game_state* state);
+void game_pf_calc(struct game_state *state, struct game_pf *pf);

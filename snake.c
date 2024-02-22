@@ -173,26 +173,51 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
         dy_ccw = 0;
         dy_cw = 0;
     }
+
+    int forward_x = npc->head_x + npc->dx;
+    int forward_y = npc->head_y + npc->dy;
+
+    int cw_x = npc->head_x + dx_cw;
+    int cw_y = npc->head_y + dy_cw;
+
+    int ccw_x = npc->head_x + dx_ccw;
+    int ccw_y = npc->head_y + dy_ccw;
+
+    int forward_oob =
+        forward_x < 0 ||
+        forward_x >= state->config->field_size_x ||
+        forward_y < 0 ||
+        forward_y >= state->config->field_size_y;
+    
+    int cw_oob =
+        cw_x < 0 ||
+        cw_x >= state->config->field_size_x ||
+        cw_y < 0 ||
+        cw_y >= state->config->field_size_y;
+    
+    int ccw_oob =
+        ccw_x < 0 ||
+        ccw_x >= state->config->field_size_x ||
+        ccw_y < 0 ||
+        ccw_y >= state->config->field_size_y;
+
     int forward = -1;
     int cw = -1;
     int ccw = -1;
 
-    if(!(npc->head_x + npc->dx < 0 || npc->head_x + npc->dx >= state->config->field_size_x ||
-        npc->head_y + npc->dy < 0 || npc->head_y + npc->dy >= state->config->field_size_y))
+    if(!forward_oob)
     {
-        forward = pf->distances[(npc->head_y + npc->dy) * state->config->field_size_x + (npc->head_x + npc->dx)];
+        forward = pf->distances[forward_y * state->config->field_size_x + forward_x];
     }
 
-    if(!(npc->head_x + dx_cw < 0 || npc->head_x + dx_cw >= state->config->field_size_x ||
-        npc->head_y + dy_cw < 0 || npc->head_y + dy_cw >= state->config->field_size_y))
+    if(!cw_oob)
     {
-        cw = pf->distances[(npc->head_y + dy_cw) * state->config->field_size_x + (npc->head_x + dx_cw)];
+        cw = pf->distances[cw_y * state->config->field_size_x + cw_x];
     }
 
-    if(!(npc->head_x + dx_ccw < 0 || npc->head_x + dx_ccw >= state->config->field_size_x ||
-        npc->head_y + dy_ccw < 0 || npc->head_y + dy_ccw >= state->config->field_size_y))
+    if(!ccw_oob)
     {
-        ccw = pf->distances[(npc->head_y + dy_ccw) * state->config->field_size_x + (npc->head_x + dx_ccw)];
+        ccw = pf->distances[ccw_y * state->config->field_size_x + ccw_x];
     }
 
     if(cw != -1 && (ccw == -1 || cw < ccw) && (forward == -1 || cw < forward)){
@@ -202,6 +227,14 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
     else if(ccw != -1 && (forward == -1 || ccw < forward)){
         npc->dx = dx_ccw;
         npc->dy = dy_ccw;
+    } else if(forward == -1) {
+        if(!cw_oob && state->segments[cw_y * state->config->field_size_x + cw_x] == SNAKE_SEGMENT_NONE) {
+            npc->dx = dx_cw;
+            npc->dy = dy_cw;
+        } else if(!ccw_oob && state->segments[ccw_y * state->config->field_size_x + ccw_x] == SNAKE_SEGMENT_NONE) {
+            npc->dx = dx_ccw;
+            npc->dy = dy_ccw;
+        }
     }
 }
 

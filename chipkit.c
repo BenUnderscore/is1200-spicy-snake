@@ -260,50 +260,43 @@ void snake_main(){
 	}
 }
 
-void buttons_test() {
-	display_init();
-	int counter = 0;
-	int rownum, pagenum, colnum;
-	for(pagenum = 0; pagenum < 4; pagenum++){
-		for(rownum = 0; rownum < 4; rownum++){
-			for(colnum = 0; colnum < 32; colnum++){
-				screen_pages[pagenum][rownum][colnum] = counter++;
-			}
-		}
-	}
-	update_screen();
-	// uint8_t data[128];
-	// {
-	// 	int i;
-	// 	for(i = 0; i < 128; i++) {
-	// 		data[i] = i;
-	// 	}
-	// }
-	// display_image(0, data);
-	// display_image(32, data);
-	// display_image(64, data);
-	// display_image(96, data);
 
-	int buttons_mask = (1 << 5) | (1 << 6) | (1 << 7);
-	
-	//Init
-	TRISD = buttons_mask;
-	TRISE = 0x00;
-	TRISF = (1 << 3) | (1 << 2);
-	TRISD |= (1 << 0) | (1 << 8) | (1 << 2);
 
-	while(1) {
-		int up = PORTF & (1 << 3);
-		int right = PORTD & (1 << 0);
-		int down = PORTD & (1 << 8);
-		int left = PORTD & (1 << 2);
-		write_leds(up | right | (down >> 7) | left);
-		screen_pages[0][0][0] = PORTD & (1<<5);
-		update_screen();
+//0x00 0x84 0x86 0xFF 0xFF 0x80 0x80 0x00 0x00 0xFF 0xFF 0x11 0x11 0x0E 0x0E
 
-		//artificial_delay(1000 * 1000);
-	}
-}
+//   ##    #####  
+//  ###    ##   ##
+// ####    ##   ##
+//   ##    ##   ##
+
+//   ##    #####  
+//   ##    ##     
+//   ##    ##     
+// ######  ##     
+
+//0x00 0xE0 0xF0 0x38 0x2C 0x24 0x22 0x24 0x2C 0x38 0xF0 0xE0 0x00 0x81 0x81 0xFF 0xFF 0x81 0x81
+
+//
+// 	    ##      ######
+//    ##  ##      ##
+//   ##    ##     ##
+
+//  ##      ##    ##
+// ############   ##
+// ##        ##   ##
+// ##        ## ######
+
+//0x00 0x80 0xC2 0xE3 0xB1 0x99 0x8F 0x86 0x00 0xFF 0xFF 0x11 0x11 0x0E 0x0E
+
+//   ####  #####  
+//  ##  ## ##   ##
+//      ## ##   ##
+//     ##  ##   ##
+
+//    ##   #####  
+//   ##    ##     
+//  ##     ##     
+// ####### ##     
 
 //Main function modified from lab
 int main() {

@@ -45,6 +45,20 @@ void render_pixel(int x, int y, char pixels) {
 	*c2 = (*c2 & ~mask) | (mask & (pixels >> 2 << bitnum));
 }
 
+void render_pixel_or(int x, int y, char pixels) {
+	int screen_x = x*2;
+	int screen_y = y*2;
+	int pagenum = screen_x >> 5; //divided by 32, round down for page
+	int rownum = screen_y >> 3; 
+	int colnum = screen_x & 0b11111;
+	int bitnum = screen_y & 0b111;
+	char *c1 = &screen_pages[pagenum][rownum][colnum];
+	char *c2 = &screen_pages[pagenum][rownum][colnum+1];
+	char mask = 0b11 << bitnum;
+	*c1 = *c1 | (mask & (pixels << bitnum));
+	*c2 = *c2 | (mask & (pixels >> 2 << bitnum));
+}
+
 void render_snake(struct game_state *state){
 	int x,y,screen_x,screen_y;
 	int pagenum, rownum, colnum, bitnum;
@@ -56,6 +70,26 @@ void render_snake(struct game_state *state){
 	}
 
 	render_pixel(state->food_x, state->food_y, 0b1001);
+}
+
+static char pixels_from_direction(int dx, int dy) {
+	if(dx > 0) {
+		return 0b1100;
+	} else if(dx < 0) {
+		return 0b0011;
+	} else if(dy > 0) {
+		return 0b1010;
+	} else {
+		return 0b0101;
+	}
+}
+
+void render_animation(struct player_state* player_states, int player_count) {
+	for(int player_num = 0; player_num < player_count; player_num++) {
+		int x = player_states[player_num].head_x + player_states[player_num].dx;
+		int y = player_states[player_num].head_y + player_states[player_num].dy;
+		render_pixel_or(x, y, pixels_from_direction(player_states[player_num].dx, player_states[player_num].dy));
+	}
 }
 
 void init_timer2(){
@@ -97,6 +131,7 @@ void snake_main(){
 	init_timer2();
 	initleds();
 	int counter = 0;
+	int frame_counter = 0;
 	int dx = 1;
 	int dy = 0;
 	while(1){
@@ -115,60 +150,19 @@ void snake_main(){
 			dx = 0;
 			dy = -1;
 		}
-		if(check_timer2()){
-			set_snake_direction(&snake_state,0,dx,dy);
-			tick_snake_game(&snake_state);
-			if(player.dead){
-				return;
+		if(check_timer2()) {
+			if((frame_counter & 1) == 0) {
+				set_snake_direction(&snake_state,0,dx,dy);
+				tick_snake_game(&snake_state);
+				if(player.dead) {
+					return;
+				}
+				render_snake(&snake_state);
+				update_screen();
 			}
-			render_snake(&snake_state);
-			update_screen();
+
+			frame_counter++;
 		}
-	}
-}
-
-void buttons_test() {
-	display_init();
-	int counter = 0;
-	int rownum, pagenum, colnum;
-	for(pagenum = 0; pagenum < 4; pagenum++){
-		for(rownum = 0; rownum < 4; rownum++){
-			for(colnum = 0; colnum < 32; colnum++){
-				screen_pages[pagenum][rownum][colnum] = counter++;
-			}
-		}
-	}
-	update_screen();
-	// uint8_t data[128];
-	// {
-	// 	int i;
-	// 	for(i = 0; i < 128; i++) {
-	// 		data[i] = i;
-	// 	}
-	// }
-	// display_image(0, data);
-	// display_image(32, data);
-	// display_image(64, data);
-	// display_image(96, data);
-
-	int buttons_mask = (1 << 5) | (1 << 6) | (1 << 7);
-	
-	//Init
-	TRISD = buttons_mask;
-	TRISE = 0x00;
-	TRISF = (1 << 3) | (1 << 2);
-	TRISD |= (1 << 0) | (1 << 8) | (1 << 2);
-
-	while(1) {
-		int up = PORTF & (1 << 3);
-		int right = PORTD & (1 << 0);
-		int down = PORTD & (1 << 8);
-		int left = PORTD & (1 << 2);
-		write_leds(up | right | (down >> 7) | left);
-		screen_pages[0][0][0] = PORTD & (1<<5);
-		update_screen();
-
-		//artificial_delay(1000 * 1000);
 	}
 }
 

@@ -12,8 +12,8 @@
 
 #include "snake.h"
 
-#define SCREEN_WIDTH 50
-#define SCREEN_HEIGHT 15
+#define SCREEN_WIDTH 64
+#define SCREEN_HEIGHT 16
 char screen[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 void init_screen() {
@@ -47,6 +47,7 @@ void render_state(struct game_state* state) {
 }
 
 struct game_state state;
+struct game_pf pf;
 
 int main() {
 	init_screen();
@@ -90,30 +91,31 @@ int main() {
 
 	while(!snake_dies(&state, 0))
 	{
-		tick_snake_game(&state);
-
 		timeout(0);
-		char c = getch();
-
-		render_state(&state);
+		// char c = getch();
 		
-		if(c != ERR) {
-			switch(c) {
-			case 'a':
-				set_snake_direction(&state, 0, -1, 0);
-				break;
-			case 'd':
-				set_snake_direction(&state, 0, 1, 0);
-				break;
-			case 'w':
-				set_snake_direction(&state, 0, 0, 1);
-				break;
-			case 's':
-				set_snake_direction(&state, 0, 0, -1);
-				break;
-			}
-		}
+		// if(c != ERR) {
+		// 	switch(c) {
+		// 	case 'a':
+		// 		set_snake_direction(&state, 0, -1, 0);
+		// 		break;
+		// 	case 'd':
+		// 		set_snake_direction(&state, 0, 1, 0);
+		// 		break;
+		// 	case 'w':
+		// 		set_snake_direction(&state, 0, 0, 1);
+		// 		break;
+		// 	case 's':
+		// 		set_snake_direction(&state, 0, 0, -1);
+		// 		break;
+		// 	}
+		// }
 
+		game_pf_calc(&state, &pf);
+		move_npc(&state, &player, &pf);
+
+		tick_snake_game(&state);
+		render_state(&state);
 		draw_screen();
 		usleep(100 * 1000);
 	}

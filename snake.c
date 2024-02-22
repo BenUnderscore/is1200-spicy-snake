@@ -366,3 +366,32 @@ void game_pf_calc(struct game_state *state, struct game_pf *pf){
         back_stack = temp;
     }
 }
+
+void get_tail_dir(struct game_state* state, int player_num, int* dx, int* dy)
+{
+    struct player_state* player = &state->players[player_num];
+    char segment = state->segments[player->tail_y * state->config->field_size_x + player->tail_x];
+
+    switch(segment) {
+    case SNAKE_SEGMENT_HEAD:
+        *dx = player->dx;
+        *dy = player->dy;
+        break;
+    case SNAKE_SEGMENT_LEFT:
+        *dx = -1;
+        *dy = 0;
+        break;
+    case SNAKE_SEGMENT_RIGHT:
+        *dx = 1;
+        *dy = 0;
+        break;
+    case SNAKE_SEGMENT_DOWN:
+        *dx = 0;
+        *dy = -1;
+        break;
+    case SNAKE_SEGMENT_UP:
+        *dx = 0;
+        *dy = 1;
+        break;
+    }
+}

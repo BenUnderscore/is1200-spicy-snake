@@ -78,6 +78,17 @@ struct inputs get_p2_inputs(){
 
 char screen_pages[4][4][32]; //pages, rows, columns
 
+void clear_screen_pages() {
+	int pagenum, rownum, colnum;
+	for(pagenum = 0; pagenum < 4; pagenum++) {
+		for(rownum = 0; rownum < 4; rownum++) {
+			for(colnum = 0; colnum < 4; colnum++) {
+				screen_pages[pagenum][rownum][colnum] = 0;
+			}
+		}
+	}
+}
+
 void update_screen(){
 	int pagenum;
 	for(pagenum = 0; pagenum < 4; pagenum++){
@@ -170,7 +181,39 @@ int check_timer2(){
 
 struct game_state snake_state;
 
-void snake_main(){
+enum game_mode {
+	MODE_SINGLE,
+	MODE_MULTI,
+	MODE_AI
+};
+
+void memcpy(char* dst, char* src, int n) {
+	int i;
+	for(i = 0; i < n; i++) {
+		dst[i] = src[i];
+	}
+}
+
+enum game_mode mode_select() {
+	char str_1p[] = {
+		0x00, 0x84, 0x86, 0xFF, 0xFF, 0x80, 0x80, 0x00, 0x00, 0xFF, 0xFF, 0x11, 0x11, 0x0E, 0x0E
+	};
+
+	char str_AI[] ={
+		0x00, 0xE0, 0xF0, 0x38, 0x2C, 0x24, 0x22, 0x24, 0x2C, 0x38, 0xF0, 0xE0, 0x00, 0x81, 0x81, 0xFF, 0xFF, 0x81, 0x81
+	};
+	
+	while(1) {
+		if(check_timer2()) {
+			clear_screen_pages();
+			memcpy(screen_pages[0][0], str_1p, sizeof(str_1p));
+			memcpy(screen_pages[0][0]+16, str_AI, sizeof(str_AI));
+			update_screen();
+		}
+	}
+}
+
+void run_game(enum game_mode mode) {
 	struct player_state players[2];
 	players[0].head_x = 8;
 	players[0].head_y = 8;
@@ -193,17 +236,13 @@ void snake_main(){
 	config.field_size_x = 64;
 	config.field_size_y = 16;
 
-	init_snake_game(&snake_state, players, 2, &config, 18386);
-	display_init();
-	init_timer2();
-	initleds();
-	init_inputs();
 	int counter = 0;
 	int frame_counter = 0;
 	int dx0 = 1;
 	int dy0 = 0;
 	int dx1 = -1;
 	int dy1 = 0;
+	init_snake_game(&snake_state, players, 2, &config, 18386);
 	while(1){
 		char dbg  = PORTD & 0xF;
 		write_leds(dbg);
@@ -260,7 +299,14 @@ void snake_main(){
 	}
 }
 
+void snake_main(){
+	display_init();
+	init_timer2();
+	initleds();
+	init_inputs();
 
+	mode_select();
+}
 
 //0x00 0x84 0x86 0xFF 0xFF 0x80 0x80 0x00 0x00 0xFF 0xFF 0x11 0x11 0x0E 0x0E
 
@@ -297,6 +343,7 @@ void snake_main(){
 //   ##    ##     
 //  ##     ##     
 // ####### ##     
+
 
 //Main function modified from lab
 int main() {

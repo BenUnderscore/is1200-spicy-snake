@@ -63,3 +63,4 @@ int snake_dies(const struct game_state* state, int player_num);
 void tick_snake_game(struct game_state* state);
 void game_pf_calc(struct game_state *state, struct game_pf *pf);
 void move_npc(struct game_state *state, struct player_state *npc, struct game_pf *pf);
+void get_tail_dir(struct game_state* state, int player_num, int* dx, int* dy);

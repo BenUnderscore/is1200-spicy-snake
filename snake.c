@@ -146,7 +146,11 @@ int set_snake_direction(struct game_state *state, int player_num, int dx, int dy
 	return 1;
 }
 
-void move_npc(struct game_state *state, struct player_state *npc, struct game_pf *pf){
+static int max(int a, int b) {
+    return a > b ? a : b;
+}
+
+void move_npc(struct game_state *state, struct player_state *npc, struct game_pf *pf, int difficulty){
     int dx_cw,dy_cw;
     int dx_ccw, dy_ccw;
     if(npc->dx < 0){
@@ -208,16 +212,34 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
     if(!forward_oob)
     {
         forward = pf->distances[forward_y * state->config->field_size_x + forward_x];
+        if(forward != -1) {
+            int rand = get_random(state, 256);
+            int bias = max(rand - difficulty, 0);
+            bias = (bias + 99) / 10;
+            forward += bias;
+        }
     }
 
     if(!cw_oob)
     {
         cw = pf->distances[cw_y * state->config->field_size_x + cw_x];
+        if(cw != -1) {
+            int rand = get_random(state, 256);
+            int bias = max(rand - difficulty, 0);
+            bias = (bias + 99) / 10;
+            cw += bias;
+        }
     }
 
     if(!ccw_oob)
     {
         ccw = pf->distances[ccw_y * state->config->field_size_x + ccw_x];
+        if(ccw != -1) {
+            int rand = get_random(state, 256);
+            int bias = max(rand - difficulty, 0);
+            bias = (bias + 99) / 10;
+            ccw += bias;
+        }
     }
 
     if(cw != -1 && (ccw == -1 || cw < ccw) && (forward == -1 || cw < forward)){

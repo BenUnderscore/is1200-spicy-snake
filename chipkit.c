@@ -215,7 +215,7 @@ void clear_screen_pages() {
 	int pagenum, rownum, colnum;
 	for(pagenum = 0; pagenum < 4; pagenum++) {
 		for(rownum = 0; rownum < 4; rownum++) {
-			for(colnum = 0; colnum < 4; colnum++) {
+			for(colnum = 0; colnum < 32; colnum++) {
 				screen_pages[pagenum][rownum][colnum] = 0;
 			}
 		}
@@ -326,6 +326,48 @@ void memcpy(char* dst, char* src, int n, int invert) {
 	}
 }
 
+#define DIFF_HARD 250
+#define DIFF_MED 230
+#define DIFF_EASY 200
+
+int difficulty_select(){
+	int difficulty = 0;
+	int flash = 0;
+	while(1){
+		if(check_timer2()){
+			flash = !flash;
+			struct inputs diff_sel = get_p1_inputs();
+			if(diff_sel.down){
+				return difficulty;
+			} else if(diff_sel.left){
+				difficulty = DIFF_EASY;
+			} else if(diff_sel.right){
+				difficulty = DIFF_HARD;
+			} else if(diff_sel.up){
+				difficulty = DIFF_MED;
+			}
+			clear_screen_pages();
+
+			memcpy(screen_pages[0][2] , &font['E' * 8], 8, difficulty == DIFF_EASY && flash );
+			memcpy(screen_pages[0][2] +8, &font['A' * 8], 8, difficulty == DIFF_EASY && flash);
+			memcpy(screen_pages[0][2] +16, &font['S' * 8], 8, difficulty == DIFF_EASY && flash);
+			memcpy(screen_pages[0][2] +24, &font['Y' * 8], 8, difficulty == DIFF_EASY && flash);
+
+			memcpy(screen_pages[1][2] +16, &font['M' * 8], 8, difficulty == DIFF_MED && flash );
+			memcpy(screen_pages[1][2] +24, &font['E' * 8], 8, difficulty == DIFF_MED && flash);
+			memcpy(screen_pages[2][2], &font['D' * 8], 8, difficulty == DIFF_MED && flash);
+			memcpy(screen_pages[2][2] +8, &font['.' * 8], 8, difficulty == DIFF_MED && flash);
+
+			memcpy(screen_pages[2][2] +24, &font['H' * 8], 8, difficulty == DIFF_HARD && flash);
+			memcpy(screen_pages[3][2] , &font['A' * 8], 8, difficulty == DIFF_HARD && flash);
+			memcpy(screen_pages[3][2] +8, &font['R' * 8], 8, difficulty == DIFF_HARD && flash);
+			memcpy(screen_pages[3][2] +16, &font['D' * 8], 8, difficulty == DIFF_HARD && flash);
+			
+			update_screen();
+		}
+	}
+}
+
 int mode_select() {
 	int current_mode = 0;
 	int flash = 0;
@@ -366,9 +408,9 @@ int mode_select() {
 	}
 }
 
-void run_game(int mode) {
+void run_game(int mode, int difficulty) {
 	int player_count = mode == MODE_SINGLE ? 1 : 2;
-	
+
 	struct player_state players[2];
 	players[0].head_x = 8;
 	players[0].head_y = 8;
@@ -445,7 +487,7 @@ void run_game(int mode) {
 					set_snake_direction(&snake_state, 1, dx1, dy1);
 				} else if(mode == MODE_AI) {
 					game_pf_calc(&snake_state, &snake_pf);
-					move_npc(&snake_state, &players[1], &snake_pf);
+					move_npc(&snake_state, &players[1], &snake_pf, difficulty);
 				}
 				tick_snake_game(&snake_state);
 				if(players[0].dead && (mode == MODE_SINGLE || players[1].dead)){
@@ -471,7 +513,8 @@ void snake_main(){
 
 	while(1) {
 		int mode = mode_select();
-		run_game(mode);
+		int difficulty = difficulty_select();
+		run_game(mode, difficulty);
 	}
 }
 

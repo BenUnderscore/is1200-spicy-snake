@@ -2,6 +2,7 @@
 #include "screen.h"
 #include <stdint.h>
 #include "snake.h"
+#include "highscore.h"
 
 
 //From mipslabdata.c
@@ -315,12 +316,13 @@ int check_timer2(){
 struct game_state snake_state;
 struct game_pf snake_pf;
 int random_seed;
+struct highscore_list highscores;
 
 #define MODE_SINGLE 0
 #define MODE_AI 1
 #define MODE_MULTI 2
 
-void memcpy(char* dst, char* src, int n, int invert) {
+void memcpy(char* dst, const char* src, int n, int invert) {
 	int i;
 	for(i = 0; i < n; i++) {
 		dst[i] = invert ? ~src[i] : src[i];
@@ -439,6 +441,157 @@ int mode_select() {
 
 	wait_for_unpressed_p1_down();
 	return current_mode;
+}
+
+void score_screen(int score){
+	char initials[3] = {0,0,0};
+	int cursor = 0;
+	struct inputs last_inputs;
+	last_inputs.up = 0;
+	last_inputs.down = 0;
+	last_inputs.left = 0;
+	last_inputs.right = 0;
+	int flash = 0;
+	while(1){
+		if(check_timer2()) {
+			struct inputs current_inputs = get_p1_inputs();
+			int down = current_inputs.down && !last_inputs.down;
+			int up = current_inputs.up && !last_inputs.up;
+			int left = current_inputs.left && !last_inputs.left;
+			int right = current_inputs.right && !last_inputs.right;
+			if(right){
+				if(cursor < 3) {
+					cursor++;
+				}
+			}
+			if(left){
+				if(cursor > 0) {
+					cursor--;
+				}
+			}
+			if(down){
+				if(cursor == 3) {
+					break;
+				}
+
+				if(initials[cursor] == '\0'){
+					initials[cursor] = 'A';
+				}else{
+					initials[cursor] ++;
+					if(initials[cursor] > 'Z') {
+						initials[cursor] = '\0';
+					}
+				}
+			}
+			if(up){
+				if(cursor == 3) {
+					break;
+				}
+
+				if(initials[cursor] == '\0'){
+					initials[cursor] = 'Z';
+				}else{
+					initials[cursor] --;
+					if(initials[cursor] < 'A') {
+						initials[cursor] = '\0';
+					}
+				}
+			}
+
+			clear_screen_pages();
+			memcpy(screen_pages[1][2], &font[initials[0] * 8], 8, cursor == 0 && flash);
+			memcpy(screen_pages[1][2] + 8, &font[initials[1] * 8], 8, cursor == 1 && flash);
+			memcpy(screen_pages[1][2] + 16, &font[initials[2] * 8], 8, cursor == 2 && flash);
+			memcpy(screen_pages[2][2] + 8, &font['O' * 8], 8, cursor == 3 && flash);
+			memcpy(screen_pages[2][2] + 16, &font['K' * 8], 8, cursor == 3 && flash);
+			update_screen();
+
+			last_inputs = current_inputs;
+			flash = !flash;
+		}
+	}
+
+	struct highscore_entry e;
+	e.initials[0] = initials[0];
+	e.initials[1] = initials[1];
+	e.initials[2] = initials[2];
+	e.score = score;
+	add_highscore(&e,&highscores);
+}
+
+void render_score_in_table(int score, int row) {
+	int digit0 = score % 10;
+	int digit1 = (score - digit0) % 100;
+	int digit2 = (score - digit1) % 1000;
+	int digit3 = (score - digit2) % 10000;
+
+	digit1 /= 10;
+	digit2 /= 100;
+	digit3 /= 1000;
+
+	memcpy(screen_pages[2][row] + 8, &font[('0' + digit3) * 8 + 1], 6, 0);
+	memcpy(screen_pages[2][row] + 14, &font[('0' + digit2) * 8 + 1], 6, 0);
+	memcpy(screen_pages[2][row] + 20, &font[('0' + digit1) * 8 + 1], 6, 0);
+	memcpy(screen_pages[2][row] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
+}
+
+void show_scores(){
+	struct inputs last_inputs;
+	last_inputs.up = 0;
+	last_inputs.down = 0;
+	last_inputs.left = 0;
+	last_inputs.right = 0;
+	int cursor = 0;
+	while(1){
+		if(check_timer2()) {
+			struct inputs current_inputs = get_p1_inputs();
+			int down = current_inputs.down && !last_inputs.down;
+			int up = current_inputs.up && !last_inputs.up;
+			int left = current_inputs.left && !last_inputs.left;
+			int right = current_inputs.right && !last_inputs.right;
+			if(up){
+				if((cursor + 1) < get_highscore_count(&highscores)) {
+					cursor++;
+				}
+			}
+			if(down){
+				if(cursor > 0) {
+					cursor--;
+				}
+			}
+			//if(left || right){
+			//	break;
+			//}
+
+			clear_screen_pages();
+			if(get_highscore_count(&highscores) > 0) {
+				int i;
+				int last_index = cursor + 3;
+				if(last_index >= get_highscore_count(&highscores)) {
+					last_index = get_highscore_count(&highscores) - 1;
+				}
+
+				for(i = cursor; i <= last_index; i++) {
+					struct highscore_entry* entry = &highscores.entries[i];
+
+					int digit0 = (i + 1) % 10;
+					int digit1 = ((i + 1) - digit0) % 100;
+					digit1 /= 10;
+					memcpy(screen_pages[0][i - cursor], &font[('0' + digit1) * 8], 8, 0);
+					memcpy(screen_pages[0][i - cursor] + 8, &font[('0' + digit0) * 8], 8, 0);
+
+					memcpy(screen_pages[0][i - cursor] + 24, &font[entry->initials[0] * 8], 8, 0);
+					memcpy(screen_pages[1][i - cursor] + 0, &font[entry->initials[1] * 8], 8, 0);
+					memcpy(screen_pages[1][i - cursor] + 8, &font[entry->initials[2] * 8], 8, 0);
+
+					render_score_in_table(entry->score, i - cursor);
+				}
+			}
+			update_screen();
+
+			last_inputs = current_inputs;
+		}
+	}
 }
 
 void render_score(int score) {
@@ -581,6 +734,39 @@ void snake_main(){
 	init_inputs();
 
 	random_seed = 18386;
+	clear_highscore_list(&highscores);
+
+	{
+		struct highscore_entry entry;
+
+		entry.initials[0] = 'A';
+		entry.initials[1] = 'A';
+		entry.initials[2] = 'A';
+		entry.score = 1234;
+		add_highscore(&entry, &highscores);
+
+		entry.initials[0] = 'D';
+		entry.initials[1] = 'A';
+		entry.initials[2] = 'W';
+		entry.score = 1231;
+		add_highscore(&entry, &highscores);
+
+		entry.initials[0] = 'J';
+		entry.initials[1] = 'F';
+		entry.initials[2] = 'K';
+		entry.score = 9999;
+		add_highscore(&entry, &highscores);
+
+		entry.initials[0] = 'B';
+		entry.initials[1] = 'K';
+		entry.initials[2] = 'K';
+		entry.score = 9998;
+		add_highscore(&entry, &highscores);
+	}
+
+	//score_screen(9502);
+	show_scores();
+	return;
 
 	while(1) {
 		int mode = mode_select();

@@ -13,6 +13,10 @@
 #define SNAKE_SEGMENT_HEAD (5)
 #define SNAKE_SEGMENT_OBSTACLE (6)
 
+#define SUBSCORE_MAX (256)
+#define FOOD_REWARD (100)
+#define TIME_SUBSCORE_REWARD (64)
+
 struct player_state {
 	int head_x;
 	int head_y;
@@ -24,6 +28,8 @@ struct player_state {
 	int dy;
 
 	int dead;
+	int score;
+	int subscore;
 };
 
 struct game_pf_point {

@@ -326,27 +326,51 @@ void memcpy(char* dst, char* src, int n, int invert) {
 	}
 }
 
+void wait_for_unpressed_p1_down() {
+	while(1) {
+		if(check_timer2()) {
+			struct inputs i = get_p1_inputs();
+			if(!i.down) {
+				return;
+			}
+		}
+	}
+}
+
 #define DIFF_HARD 250
 #define DIFF_MED 230
 #define DIFF_EASY 200
 
 int difficulty_select(){
-	int difficulty = 0;
+	int difficulty = DIFF_HARD;
 	int flash = 0;
 	while(1){
+		struct inputs diff_sel = get_p1_inputs();
+		if(diff_sel.left){
+			difficulty = DIFF_EASY;
+		} else if(diff_sel.right){
+			difficulty = DIFF_HARD;
+		} else if(diff_sel.up){
+			difficulty = DIFF_MED;
+		}
 		if(check_timer2()){
 			flash = !flash;
-			struct inputs diff_sel = get_p1_inputs();
 			if(diff_sel.down){
-				return difficulty;
-			} else if(diff_sel.left){
-				difficulty = DIFF_EASY;
-			} else if(diff_sel.right){
-				difficulty = DIFF_HARD;
-			} else if(diff_sel.up){
-				difficulty = DIFF_MED;
+				break;
 			}
 			clear_screen_pages();
+
+			memcpy(screen_pages[0][0] , &font['D' * 8], 8, 0);
+			memcpy(screen_pages[0][0] +8, &font['I' * 8], 8, 0);
+			memcpy(screen_pages[0][0] +16, &font['F' * 8], 8, 0);
+			memcpy(screen_pages[0][0] +24, &font['F' * 8], 8, 0);
+			memcpy(screen_pages[1][0] , &font['I' * 8], 8, 0);
+			memcpy(screen_pages[1][0] +8, &font['C' * 8], 8, 0);
+			memcpy(screen_pages[1][0] +16, &font['U' * 8], 8, 0);
+			memcpy(screen_pages[1][0] +24, &font['L' * 8], 8, 0);
+			memcpy(screen_pages[2][0] , &font['T' * 8], 8, 0);
+			memcpy(screen_pages[2][0] +8, &font['Y' * 8], 8, 0);
+			memcpy(screen_pages[2][0] +16, &font[':' * 8], 8, 0);
 
 			memcpy(screen_pages[0][2] , &font['E' * 8], 8, difficulty == DIFF_EASY && flash );
 			memcpy(screen_pages[0][2] +8, &font['A' * 8], 8, difficulty == DIFF_EASY && flash);
@@ -366,25 +390,29 @@ int difficulty_select(){
 			update_screen();
 		}
 	}
+
+	wait_for_unpressed_p1_down();
+	return difficulty;
 }
 
 int mode_select() {
 	int current_mode = 0;
 	int flash = 0;
 	while(1) {
-		if(check_timer2()) {
-			flash = !flash;
+		struct inputs p1mode = get_p1_inputs();
+		if(p1mode.left) {
+			current_mode = 0;
+		}else if(p1mode.up) {
+			current_mode = 1;
+		}else if(p1mode.right) {
+			current_mode = 2;
+		}
 
-			struct inputs p1mode = get_p1_inputs();
+		if(check_timer2()) {
 			if(p1mode.down){
-				return current_mode;
-			}else if(p1mode.left){
-				current_mode = 0;
-			}else if(p1mode.up){
-				current_mode = 1;
-			}else if(p1mode.right){
-				current_mode = 2;
+				break;
 			}
+			flash = !flash;
 
 			clear_screen_pages();
 			//memcpy(screen_pages[0][0], str_1p, sizeof(str_1p));
@@ -406,6 +434,25 @@ int mode_select() {
 			update_screen();
 		}
 	}
+
+	wait_for_unpressed_p1_down();
+	return current_mode;
+}
+
+void render_score(int score) {
+	int digit0 = score % 10;
+	int digit1 = (score - digit0) % 100;
+	int digit2 = (score - digit1) % 1000;
+	int digit3 = (score - digit2) % 10000;
+
+	digit1 /= 10;
+	digit2 /= 100;
+	digit3 /= 1000;
+
+	memcpy(screen_pages[3][3] + 8, &font[('0' + digit3) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 14, &font[('0' + digit2) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 20, &font[('0' + digit1) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
 }
 
 void run_game(int mode, int difficulty) {
@@ -428,11 +475,23 @@ void run_game(int mode, int difficulty) {
 	players[1].dx = -1;
 	players[1].dy = 0;
 	players[1].dead = 0;
+	players[0].score = 0;
+	players[0].subscore = 0;
 
 	struct game_config config;
 	config.field_size_x = 64;
 	config.field_size_y = 16;
-	config.obstacle_count = 4;
+	switch(difficulty) {
+		case DIFF_HARD:
+			config.obstacle_count = 5;
+			break;
+		case DIFF_MED:
+			config.obstacle_count = 3;
+			break;
+		case DIFF_EASY:
+			config.obstacle_count = 1;
+			break;
+	}
 
 	int counter = 0;
 	int frame_counter = 0;
@@ -494,7 +553,14 @@ void run_game(int mode, int difficulty) {
 				if(players[0].dead && (mode == MODE_SINGLE || players[1].dead)){
 					return;
 				}
+
 				render_snake(&snake_state);
+
+				int food_under_score = snake_state.food_x >= 52 && snake_state.food_y >= 12;
+				int p1_under_score = players[0].head_x >= 52 && players[0].head_y >= 12;
+				if(mode != MODE_MULTI && !p1_under_score && !food_under_score) {
+					render_score(players[0].score);
+				}
 				update_screen();
 			} else {
 				render_animation(&snake_state, players, player_count);
@@ -514,10 +580,7 @@ void snake_main(){
 
 	while(1) {
 		int mode = mode_select();
-		int difficulty = 0;
-		if(mode == MODE_AI) {
-			difficulty = difficulty_select();
-		}
+		int difficulty = difficulty_select();
 		run_game(mode, difficulty);
 	}
 }

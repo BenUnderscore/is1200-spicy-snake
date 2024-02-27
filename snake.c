@@ -337,11 +337,17 @@ void tick_snake_game(struct game_state* state) {
 			}
 
 			if(eaten) {
+                player->score += FOOD_REWARD;
 				player->growth_backlog++;
 				regenerate_food(state);
 			}
+
+            player->subscore += TIME_SUBSCORE_REWARD;
+            if(player->subscore >= SUBSCORE_MAX) {
+                player->subscore -= SUBSCORE_MAX;
+                player->score++;
+            }
 		}
-		
 	}
 }
 

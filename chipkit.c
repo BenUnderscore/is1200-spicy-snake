@@ -432,6 +432,7 @@ void run_game(int mode, int difficulty) {
 	struct game_config config;
 	config.field_size_x = 64;
 	config.field_size_y = 16;
+	config.obstacle_count = 4;
 
 	int counter = 0;
 	int frame_counter = 0;
@@ -513,7 +514,10 @@ void snake_main(){
 
 	while(1) {
 		int mode = mode_select();
-		int difficulty = difficulty_select();
+		int difficulty = 0;
+		if(mode == MODE_AI) {
+			difficulty = difficulty_select();
+		}
 		run_game(mode, difficulty);
 	}
 }

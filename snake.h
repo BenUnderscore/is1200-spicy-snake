@@ -11,6 +11,7 @@
 #define SNAKE_SEGMENT_DOWN (3)
 #define SNAKE_SEGMENT_LEFT (4)
 #define SNAKE_SEGMENT_HEAD (5)
+#define SNAKE_SEGMENT_OBSTACLE (6)
 
 struct player_state {
 	int head_x;
@@ -41,6 +42,7 @@ struct game_config {
 	int player_count;
 	int field_size_x;
 	int field_size_y;
+	int obstacle_count;
 };
 
 struct game_state {

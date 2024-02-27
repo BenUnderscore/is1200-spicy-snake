@@ -95,6 +95,46 @@ static void regenerate_food(struct game_state* state) {
     state->food_y = y;
 }
 
+#define OBSTACLE_WIDTH 3
+#define OBSTACLE_HEIGHT 3
+
+static void generate_obstacles(struct game_state *state) {
+    int success = 0;
+
+    while(success < state->config->obstacle_count) {
+        int obst_x = get_random(state, state->config->field_size_x - OBSTACLE_WIDTH);
+        int obst_y = get_random(state, state->config->field_size_y - OBSTACLE_HEIGHT);
+
+        int colliding = 0;
+        int x, y;
+        for(y = obst_y; y < obst_y + OBSTACLE_HEIGHT; y++) {
+            for(x = obst_x; x < obst_x + OBSTACLE_WIDTH; x++) {
+                if(state->segments[y * state->config->field_size_x + x] != SNAKE_SEGMENT_NONE) {
+                    colliding = 1;
+                    break;
+                }
+            }
+            
+            if(colliding) {
+                break;
+            }
+        }
+
+        if(!colliding) {
+            int x, y;
+            for(y = obst_y; y < obst_y + OBSTACLE_HEIGHT; y++) {
+                state->segments[y * state->config->field_size_x + (obst_x + (OBSTACLE_WIDTH / 2))] = SNAKE_SEGMENT_OBSTACLE;
+            }
+
+            for(x = obst_x; x < obst_x + OBSTACLE_WIDTH; x++) {
+                state->segments[(obst_y + (OBSTACLE_HEIGHT / 2)) * state->config->field_size_x + x] = SNAKE_SEGMENT_OBSTACLE;
+            }
+
+            success++;
+        }
+    }
+}
+
 void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config, uint16_t random_seed) {
     if(config->field_size_x * config->field_size_y > GAME_MAX_SIZE) {
         #ifdef __unix__
@@ -116,6 +156,8 @@ void init_snake_game(struct game_state *state, struct player_state player_states
         state->segments[player_states[i].head_y * state->config->field_size_x + player_states[i].head_x] = SNAKE_SEGMENT_HEAD;
     }
     state->segment_count = player_count;
+
+    generate_obstacles(state);
 
     regenerate_food(state);
 }

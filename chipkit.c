@@ -165,6 +165,7 @@ struct inputs{
 
 void init_inputs() {
 	TRISD = 0b11101111;
+	TRISD |= 1 << 11;
 	TRISF = 0b10;
 }
 
@@ -398,6 +399,65 @@ int difficulty_select(){
 	return difficulty;
 }
 
+void show_scores(){
+	struct inputs last_inputs;
+	last_inputs.up = 0;
+	last_inputs.down = 0;
+	last_inputs.left = 0;
+	last_inputs.right = 0;
+	int cursor = 0;
+	while(1){
+		if(check_timer2()) {
+			struct inputs current_inputs = get_p1_inputs();
+			int down = current_inputs.down && !last_inputs.down;
+			int up = current_inputs.up && !last_inputs.up;
+			int left = current_inputs.left && !last_inputs.left;
+			int right = current_inputs.right && !last_inputs.right;
+			if(up){
+				if((cursor + 1) < get_highscore_count(&highscores)) {
+					cursor++;
+				}
+			}
+			if(down){
+				if(cursor > 0) {
+					cursor--;
+				}
+			}
+			if(((PORTD >> 11) & 1) == 0) {
+				break;
+			}
+
+			clear_screen_pages();
+			if(get_highscore_count(&highscores) > 0) {
+				int i;
+				int last_index = cursor + 3;
+				if(last_index >= get_highscore_count(&highscores)) {
+					last_index = get_highscore_count(&highscores) - 1;
+				}
+
+				for(i = cursor; i <= last_index; i++) {
+					struct highscore_entry* entry = &highscores.entries[i];
+
+					int digit0 = (i + 1) % 10;
+					int digit1 = ((i + 1) - digit0) % 100;
+					digit1 /= 10;
+					memcpy(screen_pages[0][i - cursor], &font[('0' + digit1) * 8], 8, 0);
+					memcpy(screen_pages[0][i - cursor] + 8, &font[('0' + digit0) * 8], 8, 0);
+
+					memcpy(screen_pages[0][i - cursor] + 24, &font[entry->initials[0] * 8], 8, 0);
+					memcpy(screen_pages[1][i - cursor] + 0, &font[entry->initials[1] * 8], 8, 0);
+					memcpy(screen_pages[1][i - cursor] + 8, &font[entry->initials[2] * 8], 8, 0);
+
+					render_score_in_table(entry->score, i - cursor);
+				}
+			}
+			update_screen();
+
+			last_inputs = current_inputs;
+		}
+	}
+}
+
 int mode_select() {
 	int current_mode = 0;
 	int flash = 0;
@@ -417,6 +477,10 @@ int mode_select() {
 				break;
 			}
 			flash = !flash;
+
+			if((PORTD >> 11) & 1) {
+				show_scores();
+			}
 
 			clear_screen_pages();
 			//memcpy(screen_pages[0][0], str_1p, sizeof(str_1p));
@@ -533,65 +597,6 @@ void render_score_in_table(int score, int row) {
 	memcpy(screen_pages[2][row] + 14, &font[('0' + digit2) * 8 + 1], 6, 0);
 	memcpy(screen_pages[2][row] + 20, &font[('0' + digit1) * 8 + 1], 6, 0);
 	memcpy(screen_pages[2][row] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
-}
-
-void show_scores(){
-	struct inputs last_inputs;
-	last_inputs.up = 0;
-	last_inputs.down = 0;
-	last_inputs.left = 0;
-	last_inputs.right = 0;
-	int cursor = 0;
-	while(1){
-		if(check_timer2()) {
-			struct inputs current_inputs = get_p1_inputs();
-			int down = current_inputs.down && !last_inputs.down;
-			int up = current_inputs.up && !last_inputs.up;
-			int left = current_inputs.left && !last_inputs.left;
-			int right = current_inputs.right && !last_inputs.right;
-			if(up){
-				if((cursor + 1) < get_highscore_count(&highscores)) {
-					cursor++;
-				}
-			}
-			if(down){
-				if(cursor > 0) {
-					cursor--;
-				}
-			}
-			//if(left || right){
-			//	break;
-			//}
-
-			clear_screen_pages();
-			if(get_highscore_count(&highscores) > 0) {
-				int i;
-				int last_index = cursor + 3;
-				if(last_index >= get_highscore_count(&highscores)) {
-					last_index = get_highscore_count(&highscores) - 1;
-				}
-
-				for(i = cursor; i <= last_index; i++) {
-					struct highscore_entry* entry = &highscores.entries[i];
-
-					int digit0 = (i + 1) % 10;
-					int digit1 = ((i + 1) - digit0) % 100;
-					digit1 /= 10;
-					memcpy(screen_pages[0][i - cursor], &font[('0' + digit1) * 8], 8, 0);
-					memcpy(screen_pages[0][i - cursor] + 8, &font[('0' + digit0) * 8], 8, 0);
-
-					memcpy(screen_pages[0][i - cursor] + 24, &font[entry->initials[0] * 8], 8, 0);
-					memcpy(screen_pages[1][i - cursor] + 0, &font[entry->initials[1] * 8], 8, 0);
-					memcpy(screen_pages[1][i - cursor] + 8, &font[entry->initials[2] * 8], 8, 0);
-
-					render_score_in_table(entry->score, i - cursor);
-				}
-			}
-			update_screen();
-
-			last_inputs = current_inputs;
-		}
-	}
 }
 
 void render_score(int score) {
@@ -763,10 +768,6 @@ void snake_main(){
 		entry.score = 9998;
 		add_highscore(&entry, &highscores);
 	}
-
-	//score_screen(9502);
-	show_scores();
-	return;
 
 	while(1) {
 		int mode = mode_select();

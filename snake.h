@@ -56,7 +56,7 @@ struct game_state {
 	struct player_state* players;
 	int player_count;
 
-	uint16_t random_seed;
+	int random_seed;
     int food_x;
     int food_y;
 
@@ -64,6 +64,7 @@ struct game_state {
     int segment_count;
 };
 
+uint16_t get_random(int* seed, int max_plus_one);
 void init_snake_game(struct game_state *state, struct player_state player_states[], int player_count, const struct game_config* config, uint16_t random_seed);
 void deinit_snake_game(struct game_state* state);
 int set_snake_direction(struct game_state *state, int player_num, int dx, int dy);

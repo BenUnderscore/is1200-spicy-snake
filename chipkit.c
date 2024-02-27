@@ -314,6 +314,7 @@ int check_timer2(){
 
 struct game_state snake_state;
 struct game_pf snake_pf;
+int random_seed;
 
 #define MODE_SINGLE 0
 #define MODE_AI 1
@@ -399,6 +400,7 @@ int mode_select() {
 	int current_mode = 0;
 	int flash = 0;
 	while(1) {
+		get_random(&random_seed, 1);
 		struct inputs p1mode = get_p1_inputs();
 		if(p1mode.left) {
 			current_mode = 0;
@@ -499,7 +501,7 @@ void run_game(int mode, int difficulty) {
 	int dy0 = 0;
 	int dx1 = -1;
 	int dy1 = 0;
-	init_snake_game(&snake_state, players, player_count, &config, 18386);
+	init_snake_game(&snake_state, players, player_count, &config, random_seed);
 	while(1){
 		char dbg  = PORTD & 0xF;
 		write_leds(dbg);
@@ -577,6 +579,8 @@ void snake_main(){
 	init_timer2();
 	initleds();
 	init_inputs();
+
+	random_seed = 18386;
 
 	while(1) {
 		int mode = mode_select();

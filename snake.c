@@ -10,13 +10,13 @@ static int abs(int n) {
 }
 #endif
 
-static uint16_t get_random(struct game_state* state, int max_plus_one) {
+uint16_t get_random(int* seed, int max_plus_one) {
     //Seed has range of 0-65535
 
-    int r = (int) state->random_seed;
+    int r = *seed;
     r *= 253;
     r += 41168;
-    state->random_seed = r % 65536;
+    *seed = r % 65536;
     return r % max_plus_one;
 }
 
@@ -74,7 +74,7 @@ static void regenerate_food(struct game_state* state) {
         return;
     }
 
-    int location = get_random(state, location_count);
+    int location = get_random(&state->random_seed, location_count);
 
     int x = 0;
     int y = 0;
@@ -102,8 +102,8 @@ static void generate_obstacles(struct game_state *state) {
     int success = 0;
 
     while(success < state->config->obstacle_count) {
-        int obst_x = get_random(state, state->config->field_size_x - OBSTACLE_WIDTH);
-        int obst_y = get_random(state, state->config->field_size_y - OBSTACLE_HEIGHT);
+        int obst_x = get_random(&state->random_seed, state->config->field_size_x - OBSTACLE_WIDTH);
+        int obst_y = get_random(&state->random_seed, state->config->field_size_y - OBSTACLE_HEIGHT);
 
         int colliding = 0;
         int x, y;
@@ -146,7 +146,7 @@ void init_snake_game(struct game_state *state, struct player_state player_states
 	state->players = player_states;
 	state->player_count = player_count;
     state->random_seed = random_seed;
-    get_random(state, 1);
+    get_random(&state->random_seed, 1);
 
     int i;
     for(i = 0; i < (state->config->field_size_x * state->config->field_size_y); i++) {
@@ -255,7 +255,7 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
     {
         forward = pf->distances[forward_y * state->config->field_size_x + forward_x];
         if(forward != -1) {
-            int rand = get_random(state, 256);
+            int rand = get_random(&state->random_seed, 256);
             int bias = max(rand - difficulty, 0);
             bias = (bias + 99) / 10;
             forward += bias;
@@ -266,7 +266,7 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
     {
         cw = pf->distances[cw_y * state->config->field_size_x + cw_x];
         if(cw != -1) {
-            int rand = get_random(state, 256);
+            int rand = get_random(&state->random_seed, 256);
             int bias = max(rand - difficulty, 0);
             bias = (bias + 99) / 10;
             cw += bias;
@@ -277,7 +277,7 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
     {
         ccw = pf->distances[ccw_y * state->config->field_size_x + ccw_x];
         if(ccw != -1) {
-            int rand = get_random(state, 256);
+            int rand = get_random(&state->random_seed, 256);
             int bias = max(rand - difficulty, 0);
             bias = (bias + 99) / 10;
             ccw += bias;
@@ -303,7 +303,7 @@ void move_npc(struct game_state *state, struct player_state *npc, struct game_pf
 }
 
 void tick_snake_game(struct game_state* state) {
-    get_random(state, 2);
+    get_random(&state->random_seed, 2);
     int player_num;
 	for(player_num = 0; player_num < state->player_count; player_num++) {
 		struct player_state* player = &state->players[player_num];

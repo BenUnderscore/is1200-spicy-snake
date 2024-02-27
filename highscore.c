@@ -14,14 +14,20 @@ void add_highscore(struct highscore_entry* entry, struct highscore_list* list) {
         }
     }
 
+    int full = list->valid_entries + 1 >= MAX_HIGHSCORES;
+
     if(next_lowest_index >= list->valid_entries) {
-        list->entries[list->valid_entries++] = *entry;
+        if(full) {
+            return;
+        } else {
+            list->entries[list->valid_entries++] = *entry;
+        }
     } else {
-        for(i = list->valid_entries - 1; i >= next_lowest_index; i--) {
+        for(i = list->valid_entries - (full ? 2 : 1); i >= next_lowest_index; i--) {
             list->entries[i + 1] = list->entries[i];
         }
 
-        list->valid_entries++;
+        if(!full) list->valid_entries++;
 
         list->entries[next_lowest_index] = *entry;
     }

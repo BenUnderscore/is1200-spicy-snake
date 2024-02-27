@@ -362,6 +362,11 @@ int difficulty_select(){
 			if(diff_sel.down){
 				break;
 			}
+
+			if((PORTD >> 11) & 1) {
+				show_scores();
+			}
+
 			clear_screen_pages();
 
 			memcpy(screen_pages[0][0] , &font['D' * 8], 8, 0);
@@ -507,6 +512,22 @@ int mode_select() {
 	return current_mode;
 }
 
+void render_score(int score) {
+	int digit0 = score % 10;
+	int digit1 = (score - digit0) % 100;
+	int digit2 = (score - digit1) % 1000;
+	int digit3 = (score - digit2) % 10000;
+
+	digit1 /= 10;
+	digit2 /= 100;
+	digit3 /= 1000;
+
+	memcpy(screen_pages[3][3] + 8, &font[('0' + digit3) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 14, &font[('0' + digit2) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 20, &font[('0' + digit1) * 8 + 1], 6, 0);
+	memcpy(screen_pages[3][3] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
+}
+
 void score_screen(int score){
 	char initials[3] = {0,0,0};
 	int cursor = 0;
@@ -563,11 +584,22 @@ void score_screen(int score){
 			}
 
 			clear_screen_pages();
+			memcpy(screen_pages[1][0], &font['G' * 8], 8, 0);
+			memcpy(screen_pages[1][0] + 8, &font['A' * 8], 8, 0);
+			memcpy(screen_pages[1][0] + 16, &font['M' * 8], 8, 0);
+			memcpy(screen_pages[1][0] + 24, &font['E' * 8], 8, 0);
+
+			memcpy(screen_pages[2][0] + 8, &font['O' * 8], 8, 0);
+			memcpy(screen_pages[2][0] + 16, &font['V' * 8], 8, 0);
+			memcpy(screen_pages[2][0] + 24, &font['E' * 8], 8, 0);
+			memcpy(screen_pages[3][0] + 0, &font['R' * 8], 8, 0);
+
 			memcpy(screen_pages[1][2], &font[initials[0] * 8], 8, cursor == 0 && flash);
 			memcpy(screen_pages[1][2] + 8, &font[initials[1] * 8], 8, cursor == 1 && flash);
 			memcpy(screen_pages[1][2] + 16, &font[initials[2] * 8], 8, cursor == 2 && flash);
 			memcpy(screen_pages[2][2] + 8, &font['O' * 8], 8, cursor == 3 && flash);
 			memcpy(screen_pages[2][2] + 16, &font['K' * 8], 8, cursor == 3 && flash);
+			render_score(score);
 			update_screen();
 
 			last_inputs = current_inputs;
@@ -599,23 +631,7 @@ void render_score_in_table(int score, int row) {
 	memcpy(screen_pages[2][row] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
 }
 
-void render_score(int score) {
-	int digit0 = score % 10;
-	int digit1 = (score - digit0) % 100;
-	int digit2 = (score - digit1) % 1000;
-	int digit3 = (score - digit2) % 10000;
-
-	digit1 /= 10;
-	digit2 /= 100;
-	digit3 /= 1000;
-
-	memcpy(screen_pages[3][3] + 8, &font[('0' + digit3) * 8 + 1], 6, 0);
-	memcpy(screen_pages[3][3] + 14, &font[('0' + digit2) * 8 + 1], 6, 0);
-	memcpy(screen_pages[3][3] + 20, &font[('0' + digit1) * 8 + 1], 6, 0);
-	memcpy(screen_pages[3][3] + 26, &font[('0' + digit0) * 8 + 1], 6, 0);
-}
-
-void run_game(int mode, int difficulty) {
+int run_game(int mode, int difficulty) {
 	int player_count = mode == MODE_SINGLE ? 1 : 2;
 
 	struct player_state players[2];
@@ -711,7 +727,7 @@ void run_game(int mode, int difficulty) {
 				}
 				tick_snake_game(&snake_state);
 				if(players[0].dead && (mode == MODE_SINGLE || players[1].dead)){
-					return;
+					return players[0].score;
 				}
 
 				render_snake(&snake_state);
@@ -741,38 +757,14 @@ void snake_main(){
 	random_seed = 18386;
 	clear_highscore_list(&highscores);
 
-	{
-		struct highscore_entry entry;
-
-		entry.initials[0] = 'A';
-		entry.initials[1] = 'A';
-		entry.initials[2] = 'A';
-		entry.score = 1234;
-		add_highscore(&entry, &highscores);
-
-		entry.initials[0] = 'D';
-		entry.initials[1] = 'A';
-		entry.initials[2] = 'W';
-		entry.score = 1231;
-		add_highscore(&entry, &highscores);
-
-		entry.initials[0] = 'J';
-		entry.initials[1] = 'F';
-		entry.initials[2] = 'K';
-		entry.score = 9999;
-		add_highscore(&entry, &highscores);
-
-		entry.initials[0] = 'B';
-		entry.initials[1] = 'K';
-		entry.initials[2] = 'K';
-		entry.score = 9998;
-		add_highscore(&entry, &highscores);
-	}
-
 	while(1) {
 		int mode = mode_select();
 		int difficulty = difficulty_select();
-		run_game(mode, difficulty);
+		int score = run_game(mode, difficulty);
+		if(mode != MODE_MULTI) {
+			score_screen(score);
+			wait_for_unpressed_p1_down();
+		}
 	}
 }
 
